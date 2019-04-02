@@ -87,50 +87,103 @@ class DB:
         self.headers = BASE_HEADERS.copy()
         self.headers['Authorization'] = "Bearer {token}".format(token=token())
 
-    def get(self, url):
+        #initialize some variables
+        self.run_number = None
+        self.run_name = None
+        self.run_detector = None
+        self.set_run = False
+        self.selector = 'number'
+        self.select = None
+
+    def set_run_number(self, run_number, detector='tpc'):
+        # Generalize your number vs. name approach to fix the input
+        self.run_number = run_number
+        self.run_detector = detector
+        self.run_name = self.get_name(self.run_number, detector=detector)
+        self.set_run = True
+        self._setup()
+
+    def set_run_name(self, run_name, detector='tpc'):
+        # Generalize your number vs. name approach to fix the input
+        self.run_name = run_name
+        self.run_detector = detector
+        self.run_number = self.get_number(self.run_name, detector=detector)
+        self.set_run = True
+        self._setup()
+
+    #Helper:
+    def _get(self, url):
         return requests.get(PREFIX + url, headers=self.headers)
 
-    def put(self, url, data):
+    def _put(self, url, data):
         return requests.put(PREFIX + url, data, headers=self.headers)
 
-    def post(self, url, data):
+    def _post(self, url, data):
         return requests.post(PREFIX + url, data, headers=self.headers)
 
-    def delete(self, url, data):
+    def _delete(self, url, data):
         return requests.delete(PREFIX + url, data=data, headers=self.headers)
 
-    def get_name(self, number, detector='tpc'):
+    def _setup(self):
+        #This helper function sets your url string later regarding the detector type:
+        # xenon1t:
+        #         -tpc runs have names and run numbers
+        #         -mv runs have names but run number is zero
+        # xenonnt:
+        #         -Uses a continues increasing run number since all three detectors
+        #          are starting at the same time
+
+        if self.run_detector=='mv' or self.run_number == 0:
+            self.selector='name'
+            self.select=self.run_name
+        elif self.run_detector == 'tpc' or self.run_number > 0:
+            self.selector='number'
+            self.select=self.run_number
+
+    def get_name(self, number=None, detector='tpc'):
         # TODO check against the detector, if necessary
         url = "/runs/number/{number}/filter/detector".format(number=number)
-        response = json.loads(self.get(url).text)
+        response = json.loads(self._get(url).text)
         return response['results']['name']
 
-    def get_number(self, name, detector='tpc'):
+    def get_number(self, name=None, detector='tpc'):
         url = "/runs/name/{name}/filter/detector".format(name=name)
-        response = json.loads(self.get(url).text)
+        response = json.loads(self._get(url).text)
         return response['results']['number']
 
-    def get_doc(self, number):
+    def get_doc(self):
         # return the whole run doc for this run number
-        url = '/runs/number/{num}'.format(num=number)
-        return json.loads(self.get(url).text)['results']
+        url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
+        return json.loads(self._get(url).text)['results']
 
-    def update_data(self, run, datum):
-        datum = json.dumps(datum)
-        url = '/run/number/{num}/data/'.format(num=run)
-        return self.post(url, data=datum)
+    def get_data(self):
+        url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
+        return json.loads(self._get(url).text)['results']['data']
 
-    def delete_datum(self, run, datum):
+    def get_data1(self):
+        url = '/runs/{selector}/{num}/data/dids'.format(selector=self.selector, num=self.select)
+        print(self._get(url).text)
+        return json.loads(self._get(url).text)['results']
+
+    def update_data(self, datum):
+        print(datum)
+        url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
+        return self._post(url, data=datum)
+
+    def delete_datum(self, datum):
         datum = json.dumps(datum)
-        url = '/run/number/{num}/data/'.format(num=run)
-        return self.delete(url, data=datum)
+        url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
+        return self._delete(url, data=datum)
 
 
 # for testing
 def test():
     db = DB()
-    x = db.get_name(2000)
-    print(x)
+    db.set_run_number(2000)
+    db_data = db.get_data()
+    print("------")
+    print(db_data)
+
 
 if __name__ == "__main__":
     test()
