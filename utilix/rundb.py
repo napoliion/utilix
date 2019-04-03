@@ -99,7 +99,7 @@ class DB:
         # Generalize your number vs. name approach to fix the input
         self.run_number = run_number
         self.run_detector = detector
-        self.run_name = self.get_name(self.run_number, detector=detector)
+        self.run_name = self._get_name(self.run_number, detector=detector)
         self.set_run = True
         self._setup()
 
@@ -107,7 +107,7 @@ class DB:
         # Generalize your number vs. name approach to fix the input
         self.run_name = run_name
         self.run_detector = detector
-        self.run_number = self.get_number(self.run_name, detector=detector)
+        self.run_number = self._get_number(self.run_name, detector=detector)
         self.set_run = True
         self._setup()
 
@@ -140,13 +140,12 @@ class DB:
             self.selector='number'
             self.select=self.run_number
 
-    def get_name(self, number=None, detector='tpc'):
-        # TODO check against the detector, if necessary
+    def _get_name(self, number=None, detector='tpc'):
         url = "/runs/number/{number}/filter/detector".format(number=number)
         response = json.loads(self._get(url).text)
         return response['results']['name']
 
-    def get_number(self, name=None, detector='tpc'):
+    def _get_number(self, name=None, detector='tpc'):
         url = "/runs/name/{name}/filter/detector".format(name=name)
         response = json.loads(self._get(url).text)
         return response['results']['number']
@@ -160,18 +159,18 @@ class DB:
         url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
         return json.loads(self._get(url).text)['results']['data']
 
-    def get_data1(self):
+    def get_plugin_locations(self):
         url = '/runs/{selector}/{num}/data/dids'.format(selector=self.selector, num=self.select)
-        print(self._get(url).text)
-        return json.loads(self._get(url).text)['results']
+        return json.loads(self._get(url).text)['results']['dids']
 
     def update_data(self, datum):
+        datum = json.dump(datum)
         print(datum)
         url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
         return self._post(url, data=datum)
 
     def delete_datum(self, datum):
-        datum = json.dumps(datum)
+        datum = json.dump(datum)
         url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
         return self._delete(url, data=datum)
 
