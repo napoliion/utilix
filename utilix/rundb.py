@@ -5,6 +5,7 @@ import datetime
 import logging
 from utilix.config import Config
 
+#Config the logger:
 logger = logging.getLogger("utilix")
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
@@ -12,9 +13,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+#Config Utilix
 config = Config()
-
-
 PREFIX = config.get('RunDB', 'rundb_api_url')
 BASE_HEADERS = {'Content-Type': "application/json", 'Cache-Control': "no-cache"}
 
@@ -173,11 +173,13 @@ class Token:
             json.dump(self.json, f)
 
 
-class DB:
+class DB():
     """Wrapper around the RunDB API"""
 
-    def __init__(self, token_path=os.path.join(os.environ['HOME'], ".dbtoken")):
+    def __init__(self):
         # Takes a path to serialized token object
+
+        token_path = os.path.join(os.environ['HOME'], ".dbtoken")
         token = Token(token_path)
 
         self.headers = BASE_HEADERS.copy()
@@ -190,6 +192,11 @@ class DB:
         self.set_run = False
         self.selector = 'number'
         self.select = None
+
+    def config(self, ):
+        print(url)
+        print(user)
+        print(password)
 
     def set_run_number(self, run_number, detector='tpc'):
         # Generalize your number vs. name approach to fix the input
@@ -273,6 +280,12 @@ class DB:
         url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
         return self._delete(url, data=data_field)
 
+    def replace_data(self, data_field_old=None, data_field_new=None):
+        if data_field_new == None or data_field_old == None:
+            return 0
+        delete_test = self.delete_data(data_field_old)
+        update_test = self.update_data(data_field_new)
+        ##Todo: What would be a good return here?
 
 # for testing
 def test():
