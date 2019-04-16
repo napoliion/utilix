@@ -185,7 +185,7 @@ class DB():
         self.headers = BASE_HEADERS.copy()
         self.headers['Authorization'] = "Bearer {token}".format(token=token())
 
-        #initialize some variables
+        #initialize some variables in the beginning
         self.run_number = None
         self.run_name = None
         self.run_detector = None
@@ -193,10 +193,6 @@ class DB():
         self.selector = 'number'
         self.select = None
 
-    def config(self, ):
-        print(url)
-        print(user)
-        print(password)
 
     def set_run_number(self, run_number, detector='tpc'):
         # Generalize your number vs. name approach to fix the input
@@ -247,6 +243,14 @@ class DB():
             self.selector='number'
             self.select=self.run_number
 
+    def _evaluator(self, run, detector):
+        # Evaluate if run is a run number int or string if
+        # set_run_number() or set_run_name() are not used!
+        if type(run) == int:
+            self.set_run_number(run_number=run, detector=detector)
+        elif type(run) == str:
+            self.set_run_name(run_name=run, detector=detector)
+
     def _get_name(self, number=None, detector='tpc'):
         url = "/runs/number/{number}/filter/detector".format(number=number)
         response = json.loads(self._get(url).text)
@@ -257,30 +261,43 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']['number']
 
-    def get_doc(self):
+    def get_doc(self, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
+
         # return the whole run doc for this run number
         url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
         return json.loads(self._get(url).text)['results']
 
-    def get_data(self):
+    def get_data(self, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
         url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
         return json.loads(self._get(url).text)['results']['data']
 
-    def get_plugin_locations(self):
+    def get_plugin_locations(self, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
         url = '/runs/{selector}/{num}/data/dids'.format(selector=self.selector, num=self.select)
         return json.loads(self._get(url).text)['results']['dids']
 
-    def update_data(self, data_field):
+    def update_data(self, data_field, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
         data_field = json.dumps(data_field)
         url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
         return self._post(url, data=data_field)
 
-    def delete_data(self, data_field):
+    def delete_data(self, data_field, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
         data_field = json.dumps(data_field)
         url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
         return self._delete(url, data=data_field)
 
-    def replace_data(self, data_field_old=None, data_field_new=None):
+    def replace_data(self, data_field_old=None, data_field_new=None, run=None, detector=None):
+        if run != None:
+            self._evaluator(run, detector)
         if data_field_new == None or data_field_old == None:
             return 0
         delete_test = self.delete_data(data_field_old)
@@ -294,6 +311,8 @@ def test():
     db_data = db.get_data()
     print("------")
     print(db_data)
+    print("as alternative:")
+    print(db.get_data(2000))
 
 
 if __name__ == "__main__":
