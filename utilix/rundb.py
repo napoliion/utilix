@@ -176,39 +176,12 @@ class Token:
 class DB():
     """Wrapper around the RunDB API"""
 
-    def __init__(self):
+    def __init__(self, token_path=os.path.join(os.environ['HOME'], ".dbtoken")):
         # Takes a path to serialized token object
-
-        token_path = os.path.join(os.environ['HOME'], ".dbtoken")
         token = Token(token_path)
 
         self.headers = BASE_HEADERS.copy()
         self.headers['Authorization'] = "Bearer {token}".format(token=token())
-
-        #initialize some variables in the beginning
-        self.run_number = None
-        self.run_name = None
-        self.run_detector = None
-        self.set_run = False
-        self.selector = 'number'
-        self.select = None
-
-
-    def set_run_number(self, run_number, detector='tpc'):
-        # Generalize your number vs. name approach to fix the input
-        self.run_number = run_number
-        self.run_detector = detector
-        self.run_name = self._get_name(self.run_number, detector=detector)
-        self.set_run = True
-        self._setup()
-
-    def set_run_name(self, run_name, detector='tpc'):
-        # Generalize your number vs. name approach to fix the input
-        self.run_name = run_name
-        self.run_detector = detector
-        self.run_number = self._get_number(self.run_name, detector=detector)
-        self.set_run = True
-        self._setup()
 
     #Helper:
     @Responder
@@ -227,92 +200,61 @@ class DB():
     def _delete(self, url, data):
         return requests.delete(PREFIX + url, data=data, headers=self.headers)
 
-    def _setup(self):
-        #This helper function sets your url string later regarding the detector type:
-        # xenon1t:
-        #         -tpc runs have names and run numbers
-        #         -mv runs have names but run number is zero
-        # xenonnt:
-        #         -Uses a continues increasing run number since all three detectors
-        #          are starting at the same time
-
-        if self.run_detector=='mv' or self.run_number == 0:
-            self.selector='name'
-            self.select=self.run_name
-        elif self.run_detector == 'tpc' or self.run_number > 0:
-            self.selector='number'
-            self.select=self.run_number
-
-    def _evaluator(self, run, detector):
-        # Evaluate if run is a run number int or string if
-        # set_run_number() or set_run_name() are not used!
-        if type(run) == int:
-            self.set_run_number(run_number=run, detector=detector)
-        elif type(run) == str:
-            self.set_run_name(run_name=run, detector=detector)
-
-    def _get_name(self, number=None, detector='tpc'):
+    def get_name(self, number, detector='tpc'):
+        # TODO check against the detector, if necessary
         url = "/runs/number/{number}/filter/detector".format(number=number)
         response = json.loads(self._get(url).text)
         return response['results']['name']
 
-    def _get_number(self, name=None, detector='tpc'):
+    def get_number(self, name, detector='tpc'):
         url = "/runs/name/{name}/filter/detector".format(name=name)
         response = json.loads(self._get(url).text)
         return response['results']['number']
 
-    def get_doc(self, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-
+    def get_doc_by_number(self, number):
         # return the whole run doc for this run number
-        url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
+        url = '/runs/number/{num}'.format(num=number)
         return json.loads(self._get(url).text)['results']
 
-    def get_data(self, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-        url = '/runs/{selector}/{num}'.format(selector=self.selector, num=self.select)
-        return json.loads(self._get(url).text)['results']['data']
+    def get_doc_by_name(self, name):
+        # return the whole run doc for this run number
+        url = '/runs/name/{num}'.format(num=name)
+        return json.loads(self._get(url).text)['results']
 
-    def get_plugin_locations(self, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-        url = '/runs/{selector}/{num}/data/dids'.format(selector=self.selector, num=self.select)
-        return json.loads(self._get(url).text)['results']['dids']
+    def get_data_by_number(self, number):
+        # return the whole run doc for this run number
+        url = '/runs/number/{num}/data'.format(num=number)
+        return json.loads(self._get(url).text)['results']
 
-    def update_data(self, data_field, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-        data_field = json.dumps(data_field)
-        url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
-        return self._post(url, data=data_field)
+    def get_data_by_name(self, name):
+        # return the whole run doc for this run number
+        url = '/runs/name/{num}/data'.format(num=name)
+        return json.loads(self._get(url).text)['results']
 
-    def delete_data(self, data_field, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-        data_field = json.dumps(data_field)
-        url = '/run/{selector}/{num}/data/'.format(selector=self.selector, num=self.select)
-        return self._delete(url, data=data_field)
+    def update_data_by_number(self, number, datum):
+        datum = json.dumps(datum)
+        url = '/run/number/{num}/data/'.format(num=number)
+        return self._post(url, data=datum)
 
-    def replace_data(self, data_field_old=None, data_field_new=None, run=None, detector=None):
-        if run != None:
-            self._evaluator(run, detector)
-        if data_field_new == None or data_field_old == None:
-            return 0
-        delete_test = self.delete_data(data_field_old)
-        update_test = self.update_data(data_field_new)
-        ##Todo: What would be a good return here?
+    def update_data_by_name(self, name, datum):
+        datum = json.dumps(datum)
+        url = '/run/name/{num}/data/'.format(num=name)
+        return self._post(url, data=datum)
+
+    def delete_data_by_number(self, number, datum):
+        datum = json.dumps(datum)
+        url = '/run/number/{num}/data/'.format(num=number)
+        return self._delete(url, data=datum)
+
+    def delete_data_by_name(self, name, datum):
+        datum = json.dumps(datum)
+        url = '/run/name/{num}/data/'.format(num=name)
+        return self._delete(url, data=datum)
 
 # for testing
 def test():
     db = DB()
-    db.set_run_number(2000)
-    db_data = db.get_data()
-    print("------")
-    print(db_data)
-    print("as alternative:")
-    print(db.get_data(2000))
+    print(db.get_doc_by_number(2000))
 
 
 if __name__ == "__main__":
