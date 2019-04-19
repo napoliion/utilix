@@ -13,9 +13,9 @@ class TestUpdate(unittest.TestCase):
         creation_place = "test-" + str(time.time())
 
         db = rundb.DB()
-        data = db.get_data_by_number(2000)
+        data = db.get_data(2000)
 
-        db.update_data_by_number(2000,
+        db.update_data(2000,
                        {'host': 'Host',
                         'checksum': 'checksum',
                         'location': 'test_location',
@@ -26,28 +26,28 @@ class TestUpdate(unittest.TestCase):
 
         # pull back and make sure the data has been updated
         found = False
-        data = db.get_data_by_number(2000)
-        for entry in data['data']:
+        data = db.get_data(2000)
+        for entry in data:
             if 'creation_place' in entry and \
                entry['creation_place'] == creation_place:
                 found = True
         self.assertTrue(found, msg="Unable to find added entry")
 
         # clean up test entries
-        data = db.get_data_by_number(2000)
-        for entry in data['data']:
+        data = db.get_data(2000)
+        for entry in data:
             if 'creation_place' in entry and \
                re.search('^test-', entry['creation_place']):
-                db.delete_data_by_number(2000, entry)
+                db.delete_data(2000, entry)
  
     def test_update_meta(self):
 
         creation_place = "test-" + str(time.time())
 
         db = rundb.DB()
-        data = db.get_data_by_number(2000)
+        data = db.get_data(2000)
 
-        db.update_data_by_number(2000,
+        db.update_data(2000,
                        {'host': 'Host',
                         'checksum': 'checksum',
                         'location': 'test_location',
@@ -76,19 +76,19 @@ class TestUpdate(unittest.TestCase):
 
         # pull back and make sure the data has been updated
         found = False
-        data = db.get_data_by_number(2000)
-        for entry in data['data']:
+        data = db.get_data(2000)
+        for entry in data:
             if 'creation_place' in entry and \
                entry['creation_place'] == creation_place:
                 found = True
         self.assertTrue(found, msg="Unable to find added entry")
 
         # clean up test entries
-        data = db.get_data_by_number(2000)
-        for entry in data['data']:
+        data = db.get_data(2000)
+        for entry in data:
             if 'creation_place' in entry and \
                re.search('^test-', entry['creation_place']):
-                db.delete_data_by_number(2000, entry)
+                db.delete_data(2000, entry)
 
 
 if __name__ == '__main__':

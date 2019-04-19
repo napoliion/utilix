@@ -23,12 +23,15 @@ Note that the interface returns pages of 1,000 entries, with the first page bein
 
 ### Get a full document
 
+You can use either the run number or run name as identifier for a document.
+
     db = rundb.DB()
-    doc = db.get_doc_by_number(2000)
+    doc = db.get_doc(2000)
+    doc = db.get_doc('170917_1819')
 
 ### Get only the data entry of a document
 
     db = rundb.DB()
-    data = db.get_data_by_number(2000)
+    data = db.get_data(2000)
 
     
