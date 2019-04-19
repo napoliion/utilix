@@ -251,6 +251,22 @@ class DB():
         url = '/run/name/{num}/data/'.format(num=name)
         return self._delete(url, data=datum)
 
+    def query(self, page_num):
+        url = '/runs/page/{page_num}'.format(page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+    
+    def query_by_source(self, source, page_num):
+        url = '/runs/source/{source}/page/{page_num}'.format(source=source, page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
+    def query_by_tag(self, tag, page_num):
+        url = '/runs/tag/{tag}/page/{page_num}'.format(tag=tag, page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
+
 # for testing
 def test():
     db = DB()
