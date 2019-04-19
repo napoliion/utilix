@@ -1,5 +1,6 @@
 import os
 import requests
+import re
 import json
 import datetime
 import logging
@@ -200,6 +201,15 @@ class DB():
     def _delete(self, url, data):
         return requests.delete(PREFIX + url, data=data, headers=self.headers)
 
+    def _is_run_number(self, identifier):
+        '''
+        Takes a string and classifies it as a run number (as opposed to a
+        run name)
+        '''
+        if re.search('^[0-9]+$', identifier):
+            return True
+        return False
+
     def get_name(self, number, detector='tpc'):
         # TODO check against the detector, if necessary
         url = "/runs/number/{number}/filter/detector".format(number=number)
@@ -211,45 +221,99 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']['number']
 
-    def get_doc_by_number(self, number):
-        # return the whole run doc for this run number
-        url = '/runs/number/{num}'.format(num=number)
+
+    def get_doc(self, identifier):
+        '''
+        Retrieves a document from the database. The identifier
+        could be a run number of run name - the disambiguation
+        takes place automatically.
+        '''
+
+        # map from all kinds of types (int, np int, ...)
+        identifier = str(identifier)
+
+        url = '/runs/name/{num}'.format(num=identifier)
+        if self._is_run_number(identifier):
+            url = '/runs/number/{num}'.format(num=identifier)
+
         return json.loads(self._get(url).text)['results']
 
-    def get_doc_by_name(self, name):
-        # return the whole run doc for this run number
-        url = '/runs/name/{num}'.format(num=name)
-        return json.loads(self._get(url).text)['results']
 
-    def get_data_by_number(self, number):
-        # return the whole run doc for this run number
-        url = '/runs/number/{num}/data'.format(num=number)
-        return json.loads(self._get(url).text)['results']
+    def get_data(self, identifier):
+        '''
+        Retrieves the data portion of a document from the
+        database. The identifier could be a run number of
+        run name - the disambiguation takes place
+        automatically.
+        '''
 
-    def get_data_by_name(self, name):
-        # return the whole run doc for this run number
-        url = '/runs/name/{num}/data'.format(num=name)
-        return json.loads(self._get(url).text)['results']
+        # map from all kinds of types (int, np int, ...)
+        identifier = str(identifier)
 
-    def update_data_by_number(self, number, datum):
+        url = '/runs/name/{num}/data'.format(num=identifier)
+        if self._is_run_number(identifier):
+            url = '/runs/number/{num}/data'.format(num=identifier)
+
+        data = json.loads(self._get(url).text)['results']
+        if 'data' not in data:
+            raise RuntimeException('The requested document does not'
+                                   ' have a data key/value')
+
+        return data['data']
+
+
+    def update_data(self, identifier, datum):
+        '''
+        Updates a data entry. Identifier can be run number of name.
+        '''
+
+        # map from all kinds of types (int, np int, ...)
+        identifier = str(identifier)
+
         datum = json.dumps(datum)
-        url = '/run/number/{num}/data/'.format(num=number)
+
+        url = '/run/name/{num}/data/'.format(num=identifier)
+        if self._is_run_number(identifier):
+            url = '/run/number/{num}/data/'.format(num=identifier)
+
         return self._post(url, data=datum)
 
-    def update_data_by_name(self, name, datum):
-        datum = json.dumps(datum)
-        url = '/run/name/{num}/data/'.format(num=name)
-        return self._post(url, data=datum)
 
-    def delete_data_by_number(self, number, datum):
+    def delete_data(self, identifier, datum):
+        '''
+        Updates a datum for a document with a matching identifier
+        (name or run number)
+        '''
+
+        # map from all kinds of types (int, np int, ...)
+        identifier = str(identifier)
+
         datum = json.dumps(datum)
-        url = '/run/number/{num}/data/'.format(num=number)
+
+        url = '/run/name/{num}/data/'.format(num=identifier)
+        if self._is_run_number(identifier):
+            url = '/run/number/{num}/data/'.format(num=identifier)
+
         return self._delete(url, data=datum)
 
-    def delete_data_by_name(self, name, datum):
-        datum = json.dumps(datum)
-        url = '/run/name/{num}/data/'.format(num=name)
-        return self._delete(url, data=datum)
+
+    def query(self, page_num):
+        url = '/runs/page/{page_num}'.format(page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
+
+    def query_by_source(self, source, page_num):
+        url = '/runs/source/{source}/page/{page_num}'.format(source=source, page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
+
+    def query_by_tag(self, tag, page_num):
+        url = '/runs/tag/{tag}/page/{page_num}'.format(tag=tag, page_num=page_num)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
 
 # for testing
 def test():
