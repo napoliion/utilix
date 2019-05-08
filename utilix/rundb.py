@@ -221,6 +221,11 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']['number']
 
+    def get_did(self, identifier, type='raw_records'):
+        doc = self.get_doc(identifier)
+        for d in doc['data']:
+            if d['host'] == 'rucio-catalogue' and d['type'] == type:
+                return d['location']
 
     def get_doc(self, identifier):
         '''
@@ -318,7 +323,7 @@ class DB():
 # for testing
 def test():
     db = DB()
-    print(db.get_doc_by_number(2000))
+    print(db.get_did('180219_0946', 'raw_records'))
 
 
 if __name__ == "__main__":
