@@ -262,7 +262,7 @@ class DB():
         data = json.loads(self._get(url).text)['results']
         if 'data' not in data:
             raise RuntimeException('The requested document does not'
-                                   ' have a data key/value')
+                                   'have a data key/value')
 
         return data['data']
 
