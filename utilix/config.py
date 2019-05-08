@@ -27,6 +27,8 @@ class Config():
 
         def __init__(self):
             config_file_path = os.path.join(os.environ['HOME'], '.xenonnt.conf')
+            if 'XENONNT_CONFIG' in os.environ:
+                config_file_path = os.environ['XENONNT_CONFIG']
             logger.debug('Loading configuration from %s' % (config_file_path))
             configparser.ConfigParser.__init__(self, interpolation=EnvInterpolation())
 
