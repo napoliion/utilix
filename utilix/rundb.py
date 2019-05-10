@@ -115,7 +115,7 @@ class Token:
     Object handling tokens for runDB API access.
     
     """
-    def __init__(self, path=os.path.join(os.environ['HOME'], ".dbtoken")):
+    def __init__(self, path):
         # if token path exists, read it in. Otherwise make a new one
         if os.path.exists(path):
             with open(path) as f:
@@ -177,7 +177,13 @@ class Token:
 class DB():
     """Wrapper around the RunDB API"""
 
-    def __init__(self, token_path=os.path.join(os.environ['HOME'], ".dbtoken")):
+    def __init__(self, token_path=None):
+    
+        if token_path is None:
+            if 'HOME' not in os.environ:
+                logger.error('$HOME is not defined in the enviroment')
+            token_path=os.path.join(os.environ['HOME'], ".dbtoken")
+
         # Takes a path to serialized token object
         token = Token(token_path)
 
@@ -305,6 +311,8 @@ class DB():
     def query(self, page_num):
         url = '/runs/page/{page_num}'.format(page_num=page_num)
         response = json.loads(self._get(url).text)
+        if not 'results' in response:
+            return None
         return response['results']
 
 
