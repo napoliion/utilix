@@ -20,6 +20,7 @@ class Config():
     def __init__(self):
         if not Config.instance:
             Config.instance = Config.__Config()
+
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
@@ -27,12 +28,12 @@ class Config():
 
         def __init__(self):
             if 'HOME' not in os.environ:
-                logger.warn('$HOME is not defined in the environment')
-            config_file_path = ".xenonnt.conf"
-            if 'XENONNT_CONFIG' in os.environ:
-                config_file_path = os.environ['XENONNT_CONFIG']
-            elif 'HOME' in os.environ:
-                config_file_path = os.path.join(os.environ['HOME'], '.xenonnt.conf')
+                logger.warning('$HOME is not defined in the environment')
+
+            # if XENON_CONFIG defined as env variable use that
+            # if not, get it from home directory
+            home_config = os.path.join(os.environ['HOME'], '.xenon_config')
+            config_file_path = os.environ.get('XENON_CONFIG', home_config)
             logger.debug('Loading configuration from %s' % (config_file_path))
             configparser.ConfigParser.__init__(self, interpolation=EnvInterpolation())
 
