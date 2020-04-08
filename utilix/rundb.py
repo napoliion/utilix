@@ -4,6 +4,7 @@ import re
 import json
 import datetime
 import logging
+import pymongo
 from utilix.config import Config
 
 #Config the logger:
@@ -231,7 +232,7 @@ class DB():
         doc = self.get_doc(identifier)
         for d in doc['data']:
             if d['host'] == 'rucio-catalogue' and d['type'] == type:
-                return d['location']
+                return d['did']
 
     def get_doc(self, identifier):
         '''
@@ -267,8 +268,7 @@ class DB():
 
         data = json.loads(self._get(url).text)['results']
         if 'data' not in data:
-            raise RuntimeException('The requested document does not'
-                                   'have a data key/value')
+            raise RuntimeError('The requested document does not have a data key/value')
 
         return data['data']
 
@@ -328,11 +328,15 @@ class DB():
         return response['results']
 
 
-# for testing
-def test():
-    db = DB()
-    print(db.get_did('180219_0946', 'raw_records'))
 
+def pymongo_collection(collection='runs'):
+    # default collection is the XENONnT runsDB
+    # for 1T, pass collection='runs_new'
+    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,zenigata.uchicago.edu:27017/run'
+    user = config.get('RunDB', 'pymongo_user')
+    pw = config.get('RunDB', 'pymongo_password')
+    uri = uri.format(user=user, pw=pw)
+    c = pymongo.MongoClient(uri, replicaSet='run', readPreference='secondaryPreferred')
+    DB = c['run']
+    return DB[collection]
 
-if __name__ == "__main__":
-    test()

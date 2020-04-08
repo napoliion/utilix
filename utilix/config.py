@@ -37,6 +37,8 @@ class Config():
             logger.debug('Loading configuration from %s' % (config_file_path))
             configparser.ConfigParser.__init__(self, interpolation=EnvInterpolation())
 
+            self.config_path = config_file_path
+
             try:
                 self.read_file(open(config_file_path), 'r')
             except FileNotFoundError as e:
