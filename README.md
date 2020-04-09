@@ -48,3 +48,8 @@ but not going to be used for XENONnT
 ### TODO
 We want to implement functionality for easy job submission to the Midway batch queue.
 Eventually we want to do the same for OSG. 
+
+It would be nice to port e.g. the admix database wrapper to utilix, which can then be used 
+easily by all analysts. 
+
+The rundb API likely needs to be updated slightly to handle nT schema.
