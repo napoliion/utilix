@@ -332,7 +332,7 @@ class DB():
 def pymongo_collection(collection='runs'):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
-    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,zenigata.uchicago.edu:27017/run'
+    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,fried.rice.edu:27017/run'
     user = config.get('RunDB', 'pymongo_user')
     pw = config.get('RunDB', 'pymongo_password')
     uri = uri.format(user=user, pw=pw)
