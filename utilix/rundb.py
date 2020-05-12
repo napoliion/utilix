@@ -329,14 +329,15 @@ class DB():
 
 
 
-def pymongo_collection(collection='runs'):
+def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
-    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,fried.rice.edu:27017/run'
-    user = config.get('RunDB', 'pymongo_user')
-    pw = config.get('RunDB', 'pymongo_password')
-    uri = uri.format(user=user, pw=pw)
-    c = pymongo.MongoClient(uri, replicaSet='run', readPreference='secondaryPreferred')
-    DB = c['run']
+    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,fried.rice.edu:27017/{database}'
+    user = kwargs.get('user', config.get('RunDB', 'pymongo_user'))
+    pw = kwargs.get('password', config.get('RunDB', 'pymongo_password'))
+    database = kwargs.get('database', config.get('RunDB', 'pymongo_database'))
+    uri = uri.format(user=user, pw=pw, database=database)
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    DB = c[database]
     return DB[collection]
 
