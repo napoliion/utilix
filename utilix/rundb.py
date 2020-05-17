@@ -327,16 +327,21 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']
 
+    def get_hash(self, context, datatype):
+        url = '/contexts/{context}/{dtype}'.format(context=context, dtype=datatype)
+        response = json.loads(self._get(url).text)
+        return response['results']
 
 
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
-    uri = 'mongodb://{user}:{pw}@xenon1t-daq.lngs.infn.it:27017,fried.rice.edu:27017/{database}'
+    uri = 'mongodb://{user}:{pw}@{url}'
+    url = kwargs.get('url', config.get('RunDB', 'pymongo_url'))
     user = kwargs.get('user', config.get('RunDB', 'pymongo_user'))
     pw = kwargs.get('password', config.get('RunDB', 'pymongo_password'))
     database = kwargs.get('database', config.get('RunDB', 'pymongo_database'))
-    uri = uri.format(user=user, pw=pw, database=database)
+    uri = uri.format(user=user, pw=pw, url=url)
     c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
     DB = c[database]
     return DB[collection]
