@@ -327,8 +327,12 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']
 
-    def get_hash(self, context, datatype):
-        url = '/contexts/{context}/{dtype}'.format(context=context, dtype=datatype)
+    def get_hash(self, context, datatype, straxen_version):
+        if '.' in straxen_version:
+            straxen_version = straxen_version.replace('.', '_')
+        url = '/contexts/{straxen_version}/{context}/{dtype}'.format(context=context,
+                                                                     dtype=datatype,
+                                                                     straxen_version=straxen_version)
         response = json.loads(self._get(url).text)
         return response['results']
 
