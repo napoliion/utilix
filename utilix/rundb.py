@@ -336,6 +336,14 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']
 
+    def update_context_collection(self, data):
+        context = data.get('context')
+        straxen_version = data.get('straxen_version')
+        url = '/contexts/{straxen_version}/{context}/'.format(context=context,
+                                                              straxen_version=straxen_version)
+        response = json.loads(self._put(url).text)
+        return response['results']
+
 
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
