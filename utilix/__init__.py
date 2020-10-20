@@ -6,3 +6,4 @@ try:
 
 except:
     print("Error initializing RunDB. Maybe no ~/.xenon_config file?")
+    raise
