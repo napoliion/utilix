@@ -10,7 +10,7 @@ from utilix.config import Config
 #Config the logger:
 logger = logging.getLogger("utilix")
 ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
+ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -119,17 +119,21 @@ class Token:
     def __init__(self, path):
         # if token path exists, read it in. Otherwise make a new one
         if os.path.exists(path):
+            logger.debug(f'Token exists at {path}')
             with open(path) as f:
                 json_in = json.load(f)
                 self.string = json_in['string']
                 self.creation_time = json_in['creation_time']
+                self.user = json_in['user']
         else:
-            self.string = self.new_token()
+            logger.debug(f'Creating new token')
+            self.string, self.user = self.new_token()
             self.creation_time = datetime.datetime.now().timestamp()
+
         self.path = path
 
         # for writing to disk
-        self.json = dict(string=self.string, creation_time=self.creation_time)
+        self.json = dict(string=self.string, creation_time=self.creation_time, user=self.user)
         # save the token json to disk
         self.write()
         # refresh if needed
@@ -140,10 +144,12 @@ class Token:
 
     def new_token(self):
         path = PREFIX + "/login"
-        data=json.dumps({"username": config.get('RunDB', 'rundb_api_user'),
-                         "password": config.get('RunDB', 'rundb_api_password')})
+        username = config.get('RunDB', 'rundb_api_user')
+        pw = config.get('RunDB', 'rundb_api_password')
+        data=json.dumps({"username": username,
+                         "password": pw})
         response = requests.post(path, data=data, headers=BASE_HEADERS)
-        return json.loads(response.text)['access_token']
+        return json.loads(response.text)['access_token'], username
 
     @property
     def is_valid(self):
@@ -151,17 +157,25 @@ class Token:
         return datetime.datetime.now().timestamp() - self.creation_time < 24*60*60
 
     def refresh(self):
+        # check if user in xenon_config matches the token...
+        # if it doesn't, use the one in xenon_config and overwrite the token
+        if self.user != config.get('RunDB', 'rundb_api_user'):
+            logger.debug(f"Username in {config.config_path} does not match token. Overwriting the token.")
+            self.string, self.user = self.new_token()
+
+
         # if valid, don't do anything
         if self.is_valid:
             logger.debug("Token is valid")
             return
+
         # update the token string
         url = PREFIX + "/refresh"
         headers = BASE_HEADERS.copy()
         headers['Authorization'] = "Bearer {string}".format(string=self.string)
         response = requests.get(url, headers=headers)
         # if rewew fails, try logging back in
-        if response.status_code is None or response.status_code is not 200:
+        if (response.status_code is None or response.status_code is not 200):
             self.string = self.new_token()
             self.creation_time = datetime.datetime.now().timestamp()
         else:
@@ -337,12 +351,30 @@ class DB():
         return response['results']
 
     def update_context_collection(self, data):
-        context = data.get('context')
+        context = data.get('name')
         straxen_version = data.get('straxen_version')
+        straxen_version = straxen_version.replace('.', '_')
         url = '/contexts/{straxen_version}/{context}/'.format(context=context,
                                                               straxen_version=straxen_version)
-        response = json.loads(self._put(url).text)
+        data['date_added'] = data['date_added'].isoformat()
+        response = json.loads(self._post(url, data=json.dumps(data)).text)
         return response['results']
+
+    def delete_context_collection(self, context, straxen_version):
+        straxen_version = straxen_version.replace('.', '_')
+        url = '/contexts/{straxen_version}/{context}/'.format(context=context,
+                                                              straxen_version=straxen_version)
+        response = json.loads(self._delete(url, data=None).text)
+        return response['results']
+
+    def get_context(self, context, straxen_version):
+        straxen_version = straxen_version.replace('.', '_')
+        url = '/contexts/{straxen_version}/{context}/'.format(context=context,
+                                                              straxen_version=straxen_version)
+        response = json.loads(self._get(url).text)
+        return response['results']
+
+    # TODO make function that
 
 
 def pymongo_collection(collection='runs', **kwargs):
