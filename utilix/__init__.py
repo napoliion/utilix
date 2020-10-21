@@ -4,6 +4,5 @@ try:
     # instantiate here so we just do it once
     db = DB()
 
-except:
-    print("Error initializing RunDB. Maybe no ~/.xenon_config file?")
-    raise
+except FileNotFoundError:
+    print("Warning: no xenon_config file found!")
