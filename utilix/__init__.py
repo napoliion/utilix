@@ -4,5 +4,5 @@ try:
     # instantiate here so we just do it once
     db = DB()
 
-except FileNotFoundError:
-    print("Warning: no xenon_config file found!")
+except:
+    print("Warning: no utilix configuration file found!")
