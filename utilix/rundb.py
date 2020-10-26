@@ -124,7 +124,14 @@ class Token:
                 json_in = json.load(f)
                 self.string = json_in['string']
                 self.creation_time = json_in['creation_time']
-                self.user = json_in['user']
+                # some old token files might not have the user field
+                if 'user' in json_in:
+                    self.user = json_in['user']
+                # if not, make a new token
+                else:
+                    logger.debug(f'Creating new token')
+                    self.string, self.user = self.new_token()
+                    self.creation_time = datetime.datetime.now().timestamp()
         else:
             logger.debug(f'Creating new token')
             self.string, self.user = self.new_token()
