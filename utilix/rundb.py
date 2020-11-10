@@ -381,7 +381,16 @@ class DB():
         response = json.loads(self._get(url).text)
         return response['results']
 
-    # TODO make function that
+    def get_rses(self, run_number, dtype, hash):
+        data = self.get_data(run_number)
+        rses = []
+        for d in data:
+            if (d['host'] == "rucio-catalogue" and d['type'] == dtype and
+                hash in d['did'] and d['status'] == 'transferred'):
+
+                rses.append(d['location'])
+
+        return rses
 
 
 def pymongo_collection(collection='runs', **kwargs):
