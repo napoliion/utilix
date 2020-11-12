@@ -45,9 +45,9 @@ class Config():
                 config_file_path = home_config
 
             else:
-                raise FileNotFoundError(f"Could not load a configuration file. "
+                logger.warning(f"Could not load a configuration file. "
                                         f"You can create one at {home_config}, or set a custom path using\n\n"
-                                        f"export XENON_CONFIG={{path_to_your_config}}")
+                                        f"export XENON_CONFIG=path/to/your/config\n")
 
             logger.debug('Loading configuration from %s' % (config_file_path))
             configparser.ConfigParser.__init__(self, interpolation=EnvInterpolation())
