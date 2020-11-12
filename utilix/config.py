@@ -45,7 +45,7 @@ class Config():
                 config_file_path = home_config
 
             else:
-                logger.warning(f"Could not load a configuration file. "
+                raise FileNotFoundError(f"Could not load a configuration file. "
                                         f"You can create one at {home_config}, or set a custom path using\n\n"
                                         f"export XENON_CONFIG=path/to/your/config\n")
 
