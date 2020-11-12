@@ -28,7 +28,7 @@ class Config():
     class __Config(configparser.ConfigParser):
 
         def __init__(self, path=None):
-
+            config_file_path = 'NOT_FOUND'
             if 'XENON_CONFIG' not in os.environ:
                 logger.warning('$XENON_CONFIG is not defined in the environment')
             if 'HOME' not in os.environ:
