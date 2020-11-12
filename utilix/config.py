@@ -20,33 +20,34 @@ class Config():
 
     def __init__(self, path=None):
         if not Config.instance:
-            Config.instance = Config.__Config(path=path)
+            Config.instance = Config.__Config()
 
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
     class __Config(configparser.ConfigParser):
 
-        def __init__(self, path=None):
-            config_file_path = 'NOT_FOUND'
+        def __init__(self):
+
             if 'XENON_CONFIG' not in os.environ:
-                logger.warning('$XENON_CONFIG is not defined in the environment')
+                logger.info('$XENON_CONFIG is not defined in the environment')
             if 'HOME' not in os.environ:
                 logger.warning('$HOME is not defined in the environment')
             home_config = os.path.join(os.environ['HOME'], '.xenon_config')
             xenon_config = os.environ.get('XENON_CONFIG')
 
-            # if path is passed, use that
-            if path:
-                config_file_path = path
-
             # if not, see if there is a XENON_CONFIG environment variable
-            elif xenon_config:
+            if xenon_config:
                 config_file_path = os.environ.get('XENON_CONFIG')
 
             # if not, then look for hidden file in HOME
-            elif os.path.exists(os.path.join(os.environ['HOME'], '.xenon_config')):
+            elif os.path.exists(home_config):
                 config_file_path = home_config
+
+            else:
+                raise FileNotFoundError(f"Could not load a configuration file. "
+                                        f"You can create one at {home_config}, or set a custom path using\n\n"
+                                        f"export XENON_CONFIG=path/to/your/config\n")
 
             logger.debug('Loading configuration from %s' % (config_file_path))
             configparser.ConfigParser.__init__(self, interpolation=EnvInterpolation())

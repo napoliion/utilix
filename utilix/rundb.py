@@ -5,7 +5,7 @@ import json
 import datetime
 import logging
 import pymongo
-from utilix.config import Config
+from utilix import uconfig
 
 #Config the logger:
 logger = logging.getLogger("utilix")
@@ -15,9 +15,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-#Config Utilix
-config = Config()
-PREFIX = config.get('RunDB', 'rundb_api_url')
+PREFIX = uconfig.get('RunDB', 'rundb_api_url')
 BASE_HEADERS = {'Content-Type': "application/json", 'Cache-Control': "no-cache"}
 
 def Responder(func):
@@ -151,8 +149,8 @@ class Token:
 
     def new_token(self):
         path = PREFIX + "/login"
-        username = config.get('RunDB', 'rundb_api_user')
-        pw = config.get('RunDB', 'rundb_api_password')
+        username = uconfig.get('RunDB', 'rundb_api_user')
+        pw = uconfig.get('RunDB', 'rundb_api_password')
         data=json.dumps({"username": username,
                          "password": pw})
         response = requests.post(path, data=data, headers=BASE_HEADERS)
@@ -166,8 +164,8 @@ class Token:
     def refresh(self):
         # check if user in xenon_config matches the token...
         # if it doesn't, use the one in xenon_config and overwrite the token
-        if self.user != config.get('RunDB', 'rundb_api_user'):
-            logger.debug(f"Username in {config.config_path} does not match token. Overwriting the token.")
+        if self.user != uconfig.get('RunDB', 'rundb_api_user'):
+            logger.debug(f"Username in {uconfig.config_path} does not match token. Overwriting the token.")
             self.string, self.user = self.new_token()
 
 
@@ -397,10 +395,20 @@ def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
     uri = 'mongodb://{user}:{pw}@{url}'
-    url = kwargs.get('url', config.get('RunDB', 'pymongo_url'))
-    user = kwargs.get('user', config.get('RunDB', 'pymongo_user'))
-    pw = kwargs.get('password', config.get('RunDB', 'pymongo_password'))
-    database = kwargs.get('database', config.get('RunDB', 'pymongo_database'))
+    url = kwargs.get('url')
+    user = kwargs.get('user')
+    pw = kwargs.get('password')
+    database = kwargs.get('database')
+
+    if not url:
+        url = uconfig.get('RunDB', 'pymongo_url')
+    if not user:
+        user = uconfig.get('RunDB', 'pymongo_user')
+    if not pw:
+        pw = uconfig.get('RunDB', 'pymongo_password')
+    if not database:
+        database = uconfig.get('RunDB', 'pymongo_database')
+
     uri = uri.format(user=user, pw=pw, url=url)
     c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
     DB = c[database]
