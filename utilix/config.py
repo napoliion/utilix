@@ -30,7 +30,7 @@ class Config():
         def __init__(self):
 
             if 'XENON_CONFIG' not in os.environ:
-                logger.warning('$XENON_CONFIG is not defined in the environment')
+                logger.info('$XENON_CONFIG is not defined in the environment')
             if 'HOME' not in os.environ:
                 logger.warning('$HOME is not defined in the environment')
             home_config = os.path.join(os.environ['HOME'], '.xenon_config')
