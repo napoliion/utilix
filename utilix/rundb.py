@@ -236,16 +236,21 @@ class DB():
             return True
         return False
 
-    def get_name(self, number, detector='tpc'):
-        # TODO check against the detector, if necessary
-        url = "/runs/number/{number}/filter/detector".format(number=number)
+    def _get_from_results(self, name_or_number, key):
+        url = "/runs/number/{name_or_number}/filter/detector".format(name_or_number=name_or_number)
         response = json.loads(self._get(url).text)
-        return response['results']['name']
+        if (response is None
+                or 'results' not in response
+                or key not in response['results']):
+            logger.warning(f'Cannot get {name_or_number} from {url}')
+        else:
+            return response['results'][key]
 
-    def get_number(self, name, detector='tpc'):
-        url = "/runs/name/{name}/filter/detector".format(name=name)
-        response = json.loads(self._get(url).text)
-        return response['results']['number']
+    def get_name(self, name):
+        return self._get_from_results(name, 'name')
+
+    def get_number(self, number):
+        return self._get_from_results(number, 'number')
 
     def get_did(self, identifier, type='raw_records'):
         doc = self.get_doc(identifier)
@@ -266,8 +271,8 @@ class DB():
         url = '/runs/name/{num}'.format(num=identifier)
         if self._is_run_number(identifier):
             url = '/runs/number/{num}'.format(num=identifier)
-
-        return json.loads(self._get(url).text)['results']
+        # TODO what should be default
+        return json.loads(self._get(url).text).get('results', None)
 
 
     def get_data(self, identifier):
@@ -377,15 +382,15 @@ class DB():
         url = '/contexts/{straxen_version}/{context}/'.format(context=context,
                                                               straxen_version=straxen_version)
         response = json.loads(self._get(url).text)
-        return response['results']
+        # Todo what are default results?
+        return response.get('results', None)
 
     def get_rses(self, run_number, dtype, hash):
         data = self.get_data(run_number)
         rses = []
         for d in data:
             if (d['host'] == "rucio-catalogue" and d['type'] == dtype and
-                hash in d['did'] and d['status'] == 'transferred'):
-
+                    hash in d['did'] and d['status'] == 'transferred'):
                 rses.append(d['location'])
 
         return rses
