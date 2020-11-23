@@ -403,7 +403,7 @@ class PyMongoCannotConnect(Exception):
     pass
 
 
-def test_client(client, url, raise_errors=False):
+def test_collection(coll, url, raise_errors=False):
     """
     Warn user if client can be troublesome if read preference is not specified
     :param client: pymongo client
@@ -411,12 +411,12 @@ def test_client(client, url, raise_errors=False):
     :param raise_errors: if False (default) warn, otherwise raise an error
     """
     try:
-        client.server_info()
-    except pymongo.errors.ServerSelectionTimeoutError as e:
+        # test the collection by doing a light query
+        coll.find_one({}, {'_id': 1})
+    except (pymongo.errors.ServerSelectionTimeoutError, pymongo.errors.OperationFailure) as e:
         # This happens when trying to connect to one or more mirrors
         # where we cannot decide on who is primary
-        message = (f'Cannot get server info from "{url}". *Reading* with '
-                   f'readPreference="secondaryPreferred" should work. ')
+        message = (f'Cannot get server info from "{url}". Check your config at {uconfig.config_path}')
         if not raise_errors:
             warn(message)
         else:
@@ -445,10 +445,12 @@ def pymongo_collection(collection='runs', **kwargs):
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
     uri = uri.format(user=user, pw=pw, url=url)
-    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
-    # Checkout the client we are returning and raise errors if you want
-    # to be realy sure we can use this URL.
-    test_client(c, url, raise_errors=False)
-
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred',
+                            serverSelectionTimeoutMS=2000)
     DB = c[database]
-    return DB[collection]
+    coll = DB[collection]
+    # Checkout the collection we are returning and raise errors if you want
+    # to be realy sure we can use this URL.
+    test_collection(coll, url, raise_errors=False)
+    
+    return coll
