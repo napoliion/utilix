@@ -413,11 +413,10 @@ def test_collection(coll, url, raise_errors=False):
     try:
         # test the collection by doing a light query
         coll.find_one({}, {'_id': 1})
-    except pymongo.errors.ServerSelectionTimeoutError as e:
+    except (pymongo.errors.ServerSelectionTimeoutError, pymongo.errors.OperationFailure) as e:
         # This happens when trying to connect to one or more mirrors
         # where we cannot decide on who is primary
-        message = (f'Cannot get server info from "{url}". *Reading* with '
-                   f'readPreference="secondaryPreferred" should work. ')
+        message = (f'Cannot get server info from "{url}". Check your config at {uconfig.config_path}')
         if not raise_errors:
             warn(message)
         else:
