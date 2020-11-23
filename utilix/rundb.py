@@ -6,6 +6,7 @@ import datetime
 import logging
 import pymongo
 from utilix import uconfig
+from warnings import warn
 
 #Config the logger:
 logger = logging.getLogger("utilix")
@@ -108,6 +109,7 @@ def Responder(func):
             logger.error("HTTP(s) request says: {0} (Code {1})".format(LookUp()[st.status_code][0], st.status_code))
         return st
     return func_wrapper
+
 
 class Token:
     """
@@ -417,5 +419,18 @@ def pymongo_collection(collection='runs', **kwargs):
     uri = uri.format(user=user, pw=pw, url=url)
     c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
     DB = c[database]
-    return DB[collection]
 
+    # Checkout the connection
+    try:
+        c.server_info()
+    except pymongo.errors.ServerSelectionTimeoutError:
+        # This happens when trying to connect to one or more mirrors
+        # where we cannot decide on who is primary
+        message = (
+            f'Cannot get server info from "{url}". This usually happens when '
+            f'trying to connect to multiple mirrors when they cannot decide '
+            f'which is primary. Also see:\n'
+            f'https://github.com/XENONnT/straxen/pull/163#issuecomment-732031099')
+        warn(message)
+
+    return DB[collection]
