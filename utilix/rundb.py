@@ -398,6 +398,35 @@ class DB():
         return rses
 
 
+class PyMongoCannotConnect(Exception):
+    """Raise error when we cannot connect to the pymongo client"""
+    pass
+
+
+def test_client(client, url, raise_errors=False):
+    """
+    Warn user if client can be troublesome if read preference is not specified
+    :param client: pymongo client
+    :param url: the mongo url we are testing (for the error message)
+    :param raise_errors: if False (default) warn, otherwise raise an error
+    """
+    try:
+        client.server_info()
+    except pymongo.errors.ServerSelectionTimeoutError as e:
+        # This happens when trying to connect to one or more mirrors
+        # where we cannot decide on who is primary
+        message = (f'Cannot get server info from "{url}". *Reading* with '
+                   f'readPreference="secondaryPreferred" should work. ')
+        if not raise_errors:
+            warn(message)
+        else:
+            message += (
+                'This usually happens when trying to connect to multiple '
+                'mirrors when they cannot decide which is primary. Also see:\n'
+                'https://github.com/XENONnT/straxen/pull/163#issuecomment-732031099')
+            raise PyMongoCannotConnect(message) from e
+
+
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
@@ -415,23 +444,11 @@ def pymongo_collection(collection='runs', **kwargs):
         pw = uconfig.get('RunDB', 'pymongo_password')
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
-
     uri = uri.format(user=user, pw=pw, url=url)
     c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    # Checkout the client we are returning and raise errors if you want
+    # to be realy sure we can use this URL.
+    test_client(c, url, raise_errors=False)
+
     DB = c[database]
-
-    # Checkout the connection
-    try:
-        c.server_info()
-    except pymongo.errors.ServerSelectionTimeoutError:
-        # This happens when trying to connect to one or more mirrors
-        # where we cannot decide on who is primary
-        message = (
-            f'Cannot get server info from "{url}". This usually happens when '
-            f'trying to connect to multiple mirrors when they cannot decide '
-            f'which is primary. Reading with readPreference="secondaryPreferred" '
-            f'should work. Also see:\n'
-            f'https://github.com/XENONnT/straxen/pull/163#issuecomment-732031099')
-        warn(message)
-
     return DB[collection]
