@@ -429,7 +429,8 @@ def pymongo_collection(collection='runs', **kwargs):
         message = (
             f'Cannot get server info from "{url}". This usually happens when '
             f'trying to connect to multiple mirrors when they cannot decide '
-            f'which is primary. Also see:\n'
+            f'which is primary. Reading with readPreference="secondaryPreferred" '
+            f'should work. Also see:\n'
             f'https://github.com/XENONnT/straxen/pull/163#issuecomment-732031099')
         warn(message)
 
