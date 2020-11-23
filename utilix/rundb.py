@@ -403,16 +403,16 @@ class PyMongoCannotConnect(Exception):
     pass
 
 
-def test_collection(coll, url, raise_errors=False):
+def test_collection(collection, url, raise_errors=False):
     """
     Warn user if client can be troublesome if read preference is not specified
-    :param client: pymongo client
+    :param collection: pymongo client
     :param url: the mongo url we are testing (for the error message)
     :param raise_errors: if False (default) warn, otherwise raise an error
     """
     try:
         # test the collection by doing a light query
-        coll.find_one({}, {'_id': 1})
+        collection.find_one({}, {'_id': 1})
     except (pymongo.errors.ServerSelectionTimeoutError, pymongo.errors.OperationFailure) as e:
         # This happens when trying to connect to one or more mirrors
         # where we cannot decide on who is primary
