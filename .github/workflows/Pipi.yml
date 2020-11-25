@@ -13,10 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.6'
+      - name: Checkout repo
+        uses: actions/checkout@v2
       - name: Install dependencies
         run: pip install wheel
       - name: Go to dir
-        run: ls ; cd utilix ; ls
+        run: |
+              ls 
+              cd utilix/utilix
+              ls
       - name: Build package
         run: python setup.py sdist bdist_wheel
       - name: Publish a Python distribution to PyPI
