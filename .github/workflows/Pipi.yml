@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Install dependencies
         run: pip install wheel
+      - name: Go to dir
+        run: ls ; cd utilix ; ls
       - name: Build package
         run: python setup.py sdist bdist_wheel
       - name: Publish a Python distribution to PyPI
