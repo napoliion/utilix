@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Install dependencies
+        run: pip install wheel
+      - name: Build package
+        run: python setup.py sdist bdist_wheel
       - name: Publish a Python distribution to PyPI
         # Might want to add but does not work on workflow_dispatch if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
