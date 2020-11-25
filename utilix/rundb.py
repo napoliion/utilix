@@ -6,6 +6,7 @@ import datetime
 import logging
 import pymongo
 from utilix import uconfig
+from warnings import warn
 
 #Config the logger:
 logger = logging.getLogger("utilix")
@@ -108,6 +109,7 @@ def Responder(func):
             logger.error("HTTP(s) request says: {0} (Code {1})".format(LookUp()[st.status_code][0], st.status_code))
         return st
     return func_wrapper
+
 
 class Token:
     """
@@ -396,6 +398,35 @@ class DB():
         return rses
 
 
+class PyMongoCannotConnect(Exception):
+    """Raise error when we cannot connect to the pymongo client"""
+    pass
+
+
+def test_collection(collection, url, raise_errors=False):
+    """
+    Warn user if client can be troublesome if read preference is not specified
+    :param collection: pymongo client
+    :param url: the mongo url we are testing (for the error message)
+    :param raise_errors: if False (default) warn, otherwise raise an error
+    """
+    try:
+        # test the collection by doing a light query
+        collection.find_one({}, {'_id': 1})
+    except (pymongo.errors.ServerSelectionTimeoutError, pymongo.errors.OperationFailure) as e:
+        # This happens when trying to connect to one or more mirrors
+        # where we cannot decide on who is primary
+        message = (f'Cannot get server info from "{url}". Check your config at {uconfig.config_path}')
+        if not raise_errors:
+            warn(message)
+        else:
+            message += (
+                'This usually happens when trying to connect to multiple '
+                'mirrors when they cannot decide which is primary. Also see:\n'
+                'https://github.com/XENONnT/straxen/pull/163#issuecomment-732031099')
+            raise PyMongoCannotConnect(message) from e
+
+
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
@@ -413,9 +444,13 @@ def pymongo_collection(collection='runs', **kwargs):
         pw = uconfig.get('RunDB', 'pymongo_password')
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
-
     uri = uri.format(user=user, pw=pw, url=url)
-    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred',
+                            serverSelectionTimeoutMS=2000)
     DB = c[database]
-    return DB[collection]
-
+    coll = DB[collection]
+    # Checkout the collection we are returning and raise errors if you want
+    # to be realy sure we can use this URL.
+    test_collection(coll, url, raise_errors=False)
+    
+    return coll
