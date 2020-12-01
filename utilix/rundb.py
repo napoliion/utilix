@@ -255,8 +255,12 @@ class DB():
     def get_did(self, identifier, type='raw_records'):
         doc = self.get_doc(identifier)
         for d in doc['data']:
+            if not ('host' in d and 'type' in d and 'did' in d):
+                # This ddoc is not in the format of rucio
+                continue
             if d['host'] == 'rucio-catalogue' and d['type'] == type:
                 return d['did']
+        raise ValueError(f'No {identifier} for {type}')
 
     def get_doc(self, identifier):
         '''
@@ -290,7 +294,7 @@ class DB():
         if self._is_run_number(identifier):
             url = '/runs/number/{num}/data'.format(num=identifier)
 
-        data = json.loads(self._get(url).text)['results']
+        data = json.loads(self._get(url).text).get('results', {})
         if 'data' not in data:
             raise RuntimeError('The requested document does not have a data key/value')
 
@@ -335,21 +339,20 @@ class DB():
     def query(self, page_num):
         url = '/runs/page/{page_num}'.format(page_num=page_num)
         response = json.loads(self._get(url).text)
-        if not 'results' in response:
-            return None
-        return response['results']
+        return response.get('results', {})
+
 
 
     def query_by_source(self, source, page_num):
         url = '/runs/source/{source}/page/{page_num}'.format(source=source, page_num=page_num)
         response = json.loads(self._get(url).text)
-        return response['results']
+        return response.get('results', {})
 
 
     def query_by_tag(self, tag, page_num):
         url = '/runs/tag/{tag}/page/{page_num}'.format(tag=tag, page_num=page_num)
         response = json.loads(self._get(url).text)
-        return response['results']
+        return response.get('results', {})
 
     def get_hash(self, context, datatype, straxen_version):
         if '.' in straxen_version:
@@ -358,7 +361,7 @@ class DB():
                                                                      dtype=datatype,
                                                                      straxen_version=straxen_version)
         response = json.loads(self._get(url).text)
-        return response['results']
+        return response.get('results', {})
 
     def update_context_collection(self, data):
         context = data.get('name')
@@ -368,27 +371,30 @@ class DB():
                                                               straxen_version=straxen_version)
         data['date_added'] = data['date_added'].isoformat()
         response = json.loads(self._post(url, data=json.dumps(data)).text)
-        return response['results']
+        return response.get('results', {})
 
     def delete_context_collection(self, context, straxen_version):
         straxen_version = straxen_version.replace('.', '_')
         url = '/contexts/{straxen_version}/{context}/'.format(context=context,
                                                               straxen_version=straxen_version)
         response = json.loads(self._delete(url, data=None).text)
-        return response['results']
+        return response.get('results', {})
 
     def get_context(self, context, straxen_version):
         straxen_version = straxen_version.replace('.', '_')
         url = '/contexts/{straxen_version}/{context}/'.format(context=context,
                                                               straxen_version=straxen_version)
         response = json.loads(self._get(url).text)
-        # Todo what are default results?
-        return response.get('results', None)
+        return response.get('results', {})
 
     def get_rses(self, run_number, dtype, hash):
         data = self.get_data(run_number)
         rses = []
         for d in data:
+            assert 'host' in d and 'type' in d, (
+                f"invalid data-doc retrieved for {run_number} {dtype} {hash}")
+            # Did is only in rucio-cataloge, hence don't ask for it to
+            # be in all docs in data
             if (d['host'] == "rucio-catalogue" and d['type'] == dtype and
                     hash in d['did'] and d['status'] == 'transferred'):
                 rses.append(d['location'])
