@@ -124,14 +124,14 @@ class Token:
                 json_in = json.load(f)
                 self.string = json_in['string']
                 self.creation_time = json_in['creation_time']
-                # some old token files might not have the user field
-                if 'user' in json_in:
-                    self.user = json_in['user']
-                # if not, make a new token
-                else:
-                    logger.debug(f'Creating new token')
-                    self.string, self.user = self.new_token()
-                    self.creation_time = datetime.datetime.now().timestamp()
+            # some old token files might not have the user field
+            if 'user' in json_in:
+                self.user = json_in['user']
+            # if not, make a new token
+            else:
+                logger.debug(f'Creating new token')
+                self.string, self.user = self.new_token()
+                self.creation_time = datetime.datetime.now().timestamp()
         else:
             logger.debug(f'Creating new token')
             self.string, self.user = self.new_token()
@@ -181,15 +181,16 @@ class Token:
         headers = BASE_HEADERS.copy()
         headers['Authorization'] = "Bearer {string}".format(string=self.string)
         response = requests.get(url, headers=headers)
+        response = json.loads(response.text)
+
         # if rewew fails, try logging back in
-        if (response.status_code is None or response.status_code is not 200):
-            self.string = self.new_token()
+        if (response['status_code'] is not 200 and response['error'] != 'EarlyRefreshError'):
+            print("Refreshing token")
+            self.string, self.user = self.new_token()
             self.creation_time = datetime.datetime.now().timestamp()
-        else:
-            self.string = json.loads(response.text)['access_token']
-        # write out again
-        self.write()
-        logger.debug("Token refreshed")
+            self.write()
+            logger.debug("Token refreshed")
+
 
     def write(self):
         with open(self.path, "w") as f:
