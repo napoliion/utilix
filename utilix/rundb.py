@@ -187,7 +187,6 @@ class Token:
         if (response['status_code'] is not 200 and response['error'] != 'EarlyRefreshError'):
             print("Refreshing token")
             self.string, self.user = self.new_token()
-            print(self.string, self.user)
             self.creation_time = datetime.datetime.now().timestamp()
             self.write()
             logger.debug("Token refreshed")
