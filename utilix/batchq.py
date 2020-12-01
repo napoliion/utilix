@@ -35,13 +35,12 @@ def singularity_wrap(jobstring, image, bind=('/dali', '/project2', TMPDIR)):
 
     bind_string = " ".join([f"--bind {b}" for b in bind])
     image = os.path.join(SINGULARITY_DIR, image)
-
+    jobstring = 'unset X509_CERT_DIR\n' + jobstring
     new_job_string = f"""cat > {exec_file} << EOF
 #!/bin/bash
 {jobstring}
 EOF
 singularity exec {bind_string} {image} {exec_file}
-echo 'Removing tmpfile'
 rm {exec_file}
 """
     return new_job_string
