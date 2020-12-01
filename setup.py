@@ -10,10 +10,10 @@ with open('README.md') as file:
     readme = file.read()
 
 setup(
-    name = "utilix",
-    version = "0.3.1",
+    name="utilix",
+    version="0.3.1",
     url='https://github.com/XENONnT/utilix',
-    description ="User-friendly interface to various utilities for XENON users",
+    description="User-friendly interface to various utilities for XENON users",
     #long_description=readme,
     packages=find_packages(),
     install_requires=requires,
