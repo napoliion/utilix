@@ -66,4 +66,9 @@ class Config():
         def logging_level(self):
             # look for logging level in 'basic'  field in config file. Defaults to WARNING
             level = self.get('basic', 'logging_level', fallback='WARNING').upper()
+            possible_levels = ['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+            if level not in possible_levels:
+                raise RuntimeError(f"The logging level {level} is not valid. "
+                                   f"Available levels are: \n{possible_levels}.\n "
+                                   f"Please modify {self.config_path}")
             return level
