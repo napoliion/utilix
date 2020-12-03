@@ -4,8 +4,6 @@ import logging
 
 logger = logging.getLogger("utilix")
 
-# copy + pasted from outsource.Config
-
 
 class EnvInterpolation(configparser.BasicInterpolation):
     '''Interpolation which expands environment variables in values.'''
@@ -63,3 +61,9 @@ class Config():
         def get_list(self, category, key):
             list_string = self.get(category, key)
             return [s.strip() for s in list_string.split(',')]
+
+        @property
+        def logging_level(self):
+            # look for logging level in 'basic'  field in config file. Defaults to WARNING
+            level = self.get('basic', 'logging_level', fallback='WARNING').upper()
+            return level

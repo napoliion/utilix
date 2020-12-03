@@ -10,8 +10,10 @@ from warnings import warn
 
 #Config the logger:
 logger = logging.getLogger("utilix")
+level = logging.DEBUG
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(uconfig.logging_level)
+logger.setLevel(uconfig.logging_level)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -20,7 +22,6 @@ PREFIX = uconfig.get('RunDB', 'rundb_api_url')
 BASE_HEADERS = {'Content-Type': "application/json", 'Cache-Control': "no-cache"}
 
 def Responder(func):
-
     def LookUp():
         return_dict = {
             #taken from https://github.com/kennethreitz/requests/blob/master/requests/status_codes.py
@@ -106,7 +107,19 @@ def Responder(func):
     def func_wrapper(*args, **kwargs):
         st = func(*args, **kwargs)
         if st.status_code != 200:
-            logger.error("HTTP(s) request says: {0} (Code {1})".format(LookUp()[st.status_code][0], st.status_code))
+            logger.error("API Call was {2}: HTTP(s) request says: {0} (Code {1})".format(LookUp()[st.status_code][0],
+                                                                                        st.status_code,
+                                                                                        args[1]))
+            if st.status_code == 404:
+                logger.error("Error 404 means the API call was not formatted correctly. Check the URL.")
+            elif st.status_code == 401:
+                logger.error("Error 401 is an authentication error. This is likely an issue with your token. "
+                             "Can you do 'rm ~/.dbtoken' and try again? ")
+            # add more helpful messages here...
+            # TODO reformat the LookUp function to include such messages
+
+            # raise an error if the call failed
+            raise RuntimeError("API call failed.")
         return st
     return func_wrapper
 
@@ -116,6 +129,10 @@ class Token:
     Object handling tokens for runDB API access.
     
     """
+    string = None
+    user = None
+    creation_time = None
+
     def __init__(self, path):
         # if token path exists, read it in. Otherwise make a new one
         if os.path.exists(path):
@@ -130,21 +147,23 @@ class Token:
             # if not, make a new token
             else:
                 logger.debug(f'Creating new token')
-                self.string, self.user = self.new_token()
-                self.creation_time = datetime.datetime.now().timestamp()
+                self.new_token()
         else:
-            logger.debug(f'Creating new token')
-            self.string, self.user = self.new_token()
-            self.creation_time = datetime.datetime.now().timestamp()
+            logger.debug(f'No token exists at {path}. Creating new one.')
+            self.new_token()
 
         self.path = path
 
-        # for writing to disk
-        self.json = dict(string=self.string, creation_time=self.creation_time, user=self.user)
-        # save the token json to disk
-        self.write()
+        # check if the user in the token matches the user in the config
+        if self.user != uconfig.get('RunDB', 'rundb_api_user'):
+            logger.info(f"Username in {uconfig.config_path} does not match token. Overwriting the token.")
+            self.new_token()
+
         # refresh if needed
-        self.refresh()
+        if not self.is_valid:
+            self.refresh()
+        else:
+            logger.debug("Token is valid. Not refreshing")
 
     def __call__(self):
         return self.string
@@ -153,46 +172,52 @@ class Token:
         path = PREFIX + "/login"
         username = uconfig.get('RunDB', 'rundb_api_user')
         pw = uconfig.get('RunDB', 'rundb_api_password')
-        data=json.dumps({"username": username,
-                         "password": pw})
+        data = json.dumps({"username": username,
+                           "password": pw})
+        logger.debug('Creating a new token: doing API call now')
         response = requests.post(path, data=data, headers=BASE_HEADERS)
-        return json.loads(response.text)['access_token'], username
+        response_json = json.loads(response.text)
+        logger.debug(f'The response contains these keys: {list(response_json.keys())}')
+        token = response_json.get('access_token', 'CALL_FAILED')
+        if token == 'CALL_FAILED':
+            logging.error(f"API call to create new token failed. Here is the response:\n{response.text}")
+            raise RuntimeError("Creating a new token failed.")
+        self.string = token
+        self.user = username
+        self.creation_time = datetime.datetime.now().timestamp()
+        self.write()
 
     @property
     def is_valid(self):
         # TODO do an API call for this instead?
-        return datetime.datetime.now().timestamp() - self.creation_time < 24*60*60
+        diff = datetime.datetime.now().timestamp() - self.creation_time - 100
+        return diff < 24*60*60
+
+    @property
+    def json(self):
+        return dict(string=self.string, creation_time=self.creation_time, user=self.user)
 
     def refresh(self):
-        # check if user in xenon_config matches the token...
-        # if it doesn't, use the one in xenon_config and overwrite the token
-        if self.user != uconfig.get('RunDB', 'rundb_api_user'):
-            logger.debug(f"Username in {uconfig.config_path} does not match token. Overwriting the token.")
-            self.string, self.user = self.new_token()
-
-
-        # if valid, don't do anything
-        if self.is_valid:
-            logger.debug("Token is valid")
-            return
-
         # update the token string
         url = PREFIX + "/refresh"
         headers = BASE_HEADERS.copy()
-        headers['Authorization'] = "Bearer {string}".format(string=self.string)
+        headers['Authorization'] = f"Bearer {self.string}"
+        logger.debug(f"Refreshing your token with API call {url}")
         response = requests.get(url, headers=headers)
-        response = json.loads(response.text)
-
-        # if rewew fails, try logging back in
-        if (response['status_code'] is not 200 and response['error'] != 'EarlyRefreshError'):
-            print("Refreshing token")
-            self.string, self.user = self.new_token()
+        logger.debug(f"The response was {response.text}")
+        # if renew fails, try logging back in
+        if response.status_code is not 200:
+            if json.loads(response.text)['error'] != 'EarlyRefreshError':
+                logger.warning("Refreshing token failed for some reason, so making a  new one")
+                self.string, self.user = self.new_token()
+                self.creation_time = datetime.datetime.now().timestamp()
+                logger.debug("Token refreshed")
+        else:
             self.creation_time = datetime.datetime.now().timestamp()
-            self.write()
-            logger.debug("Token refreshed")
-
+        self.write()
 
     def write(self):
+        logger.debug(f"Dumping token to disk at {self.path}.")
         with open(self.path, "w") as f:
             json.dump(self.json, f)
 
@@ -205,7 +230,7 @@ class DB():
         if token_path is None:
             if 'HOME' not in os.environ:
                 logger.error('$HOME is not defined in the enviroment')
-            token_path=os.path.join(os.environ['HOME'], ".dbtoken")
+            token_path = os.path.join(os.environ['HOME'], ".dbtoken")
 
         # Takes a path to serialized token object
         token = Token(token_path)
