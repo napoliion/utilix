@@ -10,7 +10,6 @@ from warnings import warn
 
 #Config the logger:
 logger = logging.getLogger("utilix")
-level = logging.DEBUG
 ch = logging.StreamHandler()
 ch.setLevel(uconfig.logging_level)
 logger.setLevel(uconfig.logging_level)
@@ -117,7 +116,6 @@ def Responder(func):
                              "Can you do 'rm ~/.dbtoken' and try again? ")
             # add more helpful messages here...
             # TODO reformat the LookUp function to include such messages
-
             # raise an error if the call failed
             raise RuntimeError("API call failed.")
         return st
@@ -129,7 +127,7 @@ class Token:
     Object handling tokens for runDB API access.
     
     """
-    string = None
+    token_string = None
     user = None
     creation_time = None
 
@@ -139,7 +137,7 @@ class Token:
             logger.debug(f'Token exists at {path}')
             with open(path) as f:
                 json_in = json.load(f)
-                self.string = json_in['string']
+                self.token_string = json_in['string']
                 self.creation_time = json_in['creation_time']
             # some old token files might not have the user field
             if 'user' in json_in:
@@ -166,7 +164,7 @@ class Token:
             logger.debug("Token is valid. Not refreshing")
 
     def __call__(self):
-        return self.string
+        return self.token_string
 
     def new_token(self):
         path = PREFIX + "/login"
@@ -182,7 +180,7 @@ class Token:
         if token == 'CALL_FAILED':
             logging.error(f"API call to create new token failed. Here is the response:\n{response.text}")
             raise RuntimeError("Creating a new token failed.")
-        self.string = token
+        self.token_string = token
         self.user = username
         self.creation_time = datetime.datetime.now().timestamp()
         self.write()
@@ -190,26 +188,26 @@ class Token:
     @property
     def is_valid(self):
         # TODO do an API call for this instead?
-        diff = datetime.datetime.now().timestamp() - self.creation_time - 100
+        diff = datetime.datetime.now().timestamp() - self.creation_time
         return diff < 24*60*60
 
     @property
     def json(self):
-        return dict(string=self.string, creation_time=self.creation_time, user=self.user)
+        return dict(string=self.token_string, creation_time=self.creation_time, user=self.user)
 
     def refresh(self):
         # update the token string
         url = PREFIX + "/refresh"
         headers = BASE_HEADERS.copy()
-        headers['Authorization'] = f"Bearer {self.string}"
+        headers['Authorization'] = f"Bearer {self.token_string}"
         logger.debug(f"Refreshing your token with API call {url}")
         response = requests.get(url, headers=headers)
         logger.debug(f"The response was {response.text}")
         # if renew fails, try logging back in
-        if response.status_code is not 200:
+        if response.status_code != 200:
             if json.loads(response.text)['error'] != 'EarlyRefreshError':
                 logger.warning("Refreshing token failed for some reason, so making a  new one")
-                self.string, self.user = self.new_token()
+                self.token_string, self.user = self.new_token()
                 self.creation_time = datetime.datetime.now().timestamp()
                 logger.debug("Token refreshed")
         else:
@@ -306,7 +304,6 @@ class DB():
         # TODO what should be default
         return json.loads(self._get(url).text).get('results', None)
 
-
     def get_data(self, identifier):
         '''
         Retrieves the data portion of a document from the
@@ -328,7 +325,6 @@ class DB():
 
         return data['data']
 
-
     def update_data(self, identifier, datum):
         '''
         Updates a data entry. Identifier can be run number of name.
@@ -344,7 +340,6 @@ class DB():
             url = '/run/number/{num}/data/'.format(num=identifier)
 
         return self._post(url, data=datum)
-
 
     def delete_data(self, identifier, datum):
         '''
@@ -363,19 +358,15 @@ class DB():
 
         return self._delete(url, data=datum)
 
-
     def query(self, page_num):
         url = '/runs/page/{page_num}'.format(page_num=page_num)
         response = json.loads(self._get(url).text)
         return response.get('results', {})
 
-
-
     def query_by_source(self, source, page_num):
         url = '/runs/source/{source}/page/{page_num}'.format(source=source, page_num=page_num)
         response = json.loads(self._get(url).text)
         return response.get('results', {})
-
 
     def query_by_tag(self, tag, page_num):
         url = '/runs/tag/{tag}/page/{page_num}'.format(tag=tag, page_num=page_num)
