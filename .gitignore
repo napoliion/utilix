@@ -1,5 +1,5 @@
 utilix.egg-info
 **/__pycache__
-
+.idea
 # pycache
 *.pyc
