@@ -31,7 +31,13 @@ class Config():
                 logger.info('$XENON_CONFIG is not defined in the environment')
             if 'HOME' not in os.environ:
                 logger.warning('$HOME is not defined in the environment')
-            home_config = os.path.join(os.environ['HOME'], '.xenon_config')
+                if 'USERPROFILE' in os.environ:
+                    # Are you on windows?
+                    home_config = os.path.join(os.environ['USERPROFILE'], '.xenon_config')
+                else:
+                    logger.warning('USERPROFILE is not defined in the environment')
+            else:
+                home_config = os.path.join(os.environ['HOME'], '.xenon_config')
             xenon_config = os.environ.get('XENON_CONFIG')
 
             # if not, see if there is a XENON_CONFIG environment variable
