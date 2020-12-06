@@ -132,6 +132,8 @@ class Token:
     creation_time = None
 
     def __init__(self, path):
+        self.path = path
+        
         # if token path exists, read it in. Otherwise make a new one
         if os.path.exists(path):
             logger.debug(f'Token exists at {path}')
@@ -149,8 +151,6 @@ class Token:
         else:
             logger.debug(f'No token exists at {path}. Creating new one.')
             self.new_token()
-
-        self.path = path
 
         # check if the user in the token matches the user in the config
         if self.user != uconfig.get('RunDB', 'rundb_api_user'):
