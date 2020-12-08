@@ -468,8 +468,7 @@ def pymongo_collection(collection='runs', **kwargs):
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
     uri = uri.format(user=user, pw=pw, url=url)
-    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred',
-                            serverSelectionTimeoutMS=2000)
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
     DB = c[database]
     coll = DB[collection]
     # Checkout the collection we are returning and raise errors if you want
