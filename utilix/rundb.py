@@ -207,7 +207,7 @@ class Token:
         if response.status_code != 200:
             if json.loads(response.text)['error'] != 'EarlyRefreshError':
                 logger.warning("Refreshing token failed for some reason, so making a  new one")
-                self.token_string, self.user = self.new_token()
+                self.new_token()
                 self.creation_time = datetime.datetime.now().timestamp()
                 logger.debug("Token refreshed")
         else:
