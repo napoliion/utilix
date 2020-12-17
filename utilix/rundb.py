@@ -143,7 +143,12 @@ class Token:
         if os.path.exists(path):
             logger.debug(f'Token exists at {path}')
             with open(path) as f:
-                json_in = json.load(f)
+                try:
+                    json_in = json.load(f)
+                except json.JSONDecodeError as e:
+                    raise RuntimeError(
+                        f'Cannot open {path}, please report to https://github.com/XENONnT/utilix/issues. '\
+                        f'To continue do "rm {path}" and restart notebook/utilix') from e
                 self.token_string = json_in['string']
                 self.creation_time = json_in['creation_time']
             # some old token files might not have the user field
