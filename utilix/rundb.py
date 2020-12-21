@@ -485,7 +485,12 @@ def pymongo_collection(collection='runs', **kwargs):
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
     uri = uri.format(user=user, pw=pw, url=url)
-    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    if ',' in uri:
+        # Multiple mirrors, may need to specify read preference
+        c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    else:
+        # From a single mirror there is not that much to select
+        c = pymongo.MongoClient(uri)
     DB = c[database]
     coll = DB[collection]
     # Checkout the collection we are returning and raise errors if you want
