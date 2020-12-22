@@ -8,7 +8,7 @@ import pymongo
 from utilix import uconfig
 from warnings import warn
 
-#Config the logger:
+# Config the logger:
 logger = logging.getLogger("utilix")
 ch = logging.StreamHandler()
 ch.setLevel(uconfig.logging_level)
@@ -20,10 +20,11 @@ logger.addHandler(ch)
 PREFIX = uconfig.get('RunDB', 'rundb_api_url')
 BASE_HEADERS = {'Content-Type': "application/json", 'Cache-Control': "no-cache"}
 
+
 def Responder(func):
     def LookUp():
         return_dict = {
-            #taken from https://github.com/kennethreitz/requests/blob/master/requests/status_codes.py
+            # taken from https://github.com/kennethreitz/requests/blob/master/requests/status_codes.py
             # Informational.
             100: ('continue',),
             101: ('switching_protocols',),
@@ -100,43 +101,54 @@ def Responder(func):
             509: ('bandwidth_limit_exceeded', 'bandwidth'),
             510: ('not_extended',),
             511: ('network_authentication_required', 'network_auth', 'network_authentication'),
-            }
+        }
         return return_dict
 
     def func_wrapper(*args, **kwargs):
         st = func(*args, **kwargs)
         if st.status_code != 200:
-            logger.error("API Call was {2}: HTTP(s) request says: {0} (Code {1})".format(LookUp()[st.status_code][0],
-                                                                                        st.status_code,
-                                                                                        args[1]))
+            logger.error("API Call was {2}: HTTP(s) request says: {0} (Code {1})".format(
+                LookUp()[st.status_code][0],
+                st.status_code,
+                args[1]))
             if st.status_code == 404:
-                logger.error("Error 404 means the API call was not formatted correctly. Check the URL.")
+                logger.error(
+                    "Error 404 means the API call was not formatted correctly. Check the URL.")
             elif st.status_code == 401:
-                logger.error("Error 401 is an authentication error. This is likely an issue with your token. "
-                             "Can you do 'rm ~/.dbtoken' and try again? ")
+                logger.error(
+                    "Error 401 is an authentication error. This is likely an issue with your token. "
+                    "Can you do 'rm ~/.dbtoken' and try again? ")
             # add more helpful messages here...
             # TODO reformat the LookUp function to include such messages
             # raise an error if the call failed
             raise RuntimeError("API call failed.")
         return st
+
     return func_wrapper
 
 
 class Token:
     """
     Object handling tokens for runDB API access.
-    
+
     """
     token_string = None
     user = None
     creation_time = None
 
     def __init__(self, path):
+        self.path = path
+
         # if token path exists, read it in. Otherwise make a new one
         if os.path.exists(path):
             logger.debug(f'Token exists at {path}')
             with open(path) as f:
-                json_in = json.load(f)
+                try:
+                    json_in = json.load(f)
+                except json.JSONDecodeError as e:
+                    raise RuntimeError(
+                        f'Cannot open {path}, please report to https://github.com/XENONnT/utilix/issues. '\
+                        f'To continue do "rm {path}" and restart notebook/utilix') from e
                 self.token_string = json_in['string']
                 self.creation_time = json_in['creation_time']
             # some old token files might not have the user field
@@ -150,11 +162,10 @@ class Token:
             logger.debug(f'No token exists at {path}. Creating new one.')
             self.new_token()
 
-        self.path = path
-
         # check if the user in the token matches the user in the config
         if self.user != uconfig.get('RunDB', 'rundb_api_user'):
-            logger.info(f"Username in {uconfig.config_path} does not match token. Overwriting the token.")
+            logger.info(
+                f"Username in {uconfig.config_path} does not match token. Overwriting the token.")
             self.new_token()
 
         # refresh if needed
@@ -178,7 +189,8 @@ class Token:
         logger.debug(f'The response contains these keys: {list(response_json.keys())}')
         token = response_json.get('access_token', 'CALL_FAILED')
         if token == 'CALL_FAILED':
-            logging.error(f"API call to create new token failed. Here is the response:\n{response.text}")
+            logging.error(
+                f"API call to create new token failed. Here is the response:\n{response.text}")
             raise RuntimeError("Creating a new token failed.")
         self.token_string = token
         self.user = username
@@ -189,7 +201,7 @@ class Token:
     def is_valid(self):
         # TODO do an API call for this instead?
         diff = datetime.datetime.now().timestamp() - self.creation_time
-        return diff < 24*60*60
+        return diff < 24 * 60 * 60
 
     @property
     def json(self):
@@ -207,7 +219,7 @@ class Token:
         if response.status_code != 200:
             if json.loads(response.text)['error'] != 'EarlyRefreshError':
                 logger.warning("Refreshing token failed for some reason, so making a  new one")
-                self.token_string, self.user = self.new_token()
+                self.new_token()
                 self.creation_time = datetime.datetime.now().timestamp()
                 logger.debug("Token refreshed")
         else:
@@ -224,11 +236,15 @@ class DB():
     """Wrapper around the RunDB API"""
 
     def __init__(self, token_path=None):
-    
+
         if token_path is None:
             if 'HOME' not in os.environ:
-                logger.error('$HOME is not defined in the enviroment')
-            token_path = os.path.join(os.environ['HOME'], ".dbtoken")
+                logger.error('$HOME is not defined in the environment')
+                if 'USERPROFILE' in os.environ:
+                    # Are you on windows?
+                    token_path = os.path.join(os.environ['USERPROFILE'], '.dbtoken')
+            else:
+                token_path = os.path.join(os.environ['HOME'], ".dbtoken")
 
         # Takes a path to serialized token object
         token = Token(token_path)
@@ -236,7 +252,7 @@ class DB():
         self.headers = BASE_HEADERS.copy()
         self.headers['Authorization'] = "Bearer {token}".format(token=token())
 
-    #Helper:
+    # Helper:
     @Responder
     def _get(self, url):
         return requests.get(PREFIX + url, headers=self.headers)
@@ -439,7 +455,8 @@ def test_collection(collection, url, raise_errors=False):
     except (pymongo.errors.ServerSelectionTimeoutError, pymongo.errors.OperationFailure) as e:
         # This happens when trying to connect to one or more mirrors
         # where we cannot decide on who is primary
-        message = (f'Cannot get server info from "{url}". Check your config at {uconfig.config_path}')
+        message = (
+            f'Cannot get server info from "{url}". Check your config at {uconfig.config_path}')
         if not raise_errors:
             warn(message)
         else:
@@ -468,12 +485,11 @@ def pymongo_collection(collection='runs', **kwargs):
     if not database:
         database = uconfig.get('RunDB', 'pymongo_database')
     uri = uri.format(user=user, pw=pw, url=url)
-    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred',
-                            serverSelectionTimeoutMS=2000)
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
     DB = c[database]
     coll = DB[collection]
     # Checkout the collection we are returning and raise errors if you want
     # to be realy sure we can use this URL.
     test_collection(coll, url, raise_errors=False)
-    
+
     return coll
