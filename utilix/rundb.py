@@ -436,6 +436,16 @@ class DB():
 
         return rses
 
+    # TODO
+    def get_all_contexts(self):
+        """Loads all contexts"""
+        raise NotImplementedError
+
+    # TODO
+    def get_context_info(self, dtype, strax_hash):
+        """Returns context name and strax(en) versions for a given dtype and hash"""
+        raise NotImplementedError
+
 
 class PyMongoCannotConnect(Exception):
     """Raise error when we cannot connect to the pymongo client"""
@@ -470,6 +480,7 @@ def test_collection(collection, url, raise_errors=False):
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
+    print("WARNING: pymongo_collection is deprecated. Please use nt_collection or 1t_collection instead")
     uri = 'mongodb://{user}:{pw}@{url}'
     url = kwargs.get('url')
     user = kwargs.get('user')
@@ -490,6 +501,40 @@ def pymongo_collection(collection='runs', **kwargs):
     coll = DB[collection]
     # Checkout the collection we are returning and raise errors if you want
     # to be realy sure we can use this URL.
-    test_collection(coll, url, raise_errors=False)
+    # test_collection(coll, url, raise_errors=False)
 
     return coll
+
+
+def _collection(experiment, collection, **kwargs):
+    if experiment not in ['xe1t', 'xent']:
+        raise ValueError("experiment must be '1t' or 'nt'")
+    uri = 'mongodb://{user}:{pw}@{url}'
+    url = kwargs.get('url')
+    user = kwargs.get('user')
+    pw = kwargs.get('password')
+    database = kwargs.get('database')
+
+    if not url:
+        url = uconfig.get('RunDB', 'pymongo_url')
+    if not user:
+        user = uconfig.get('RunDB', f'{experiment}_user')
+    if not pw:
+        pw = uconfig.get('RunDB', f'{experiment}_password')
+    if not database:
+        database = uconfig.get('RunDB', f'{experiment}_database')
+
+    uri = uri.format(user=user, pw=pw, url=url)
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    DB = c[database]
+    coll = DB[collection]
+
+    return coll
+
+
+def xent_collection(collection='runs', **kwargs):
+    return _collection('nt', collection, **kwargs)
+
+
+def xe1t_collection(collection='runs_new', **kwargs):
+    return _collection('1t', collection, **kwargs)
