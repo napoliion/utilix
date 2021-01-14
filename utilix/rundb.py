@@ -508,7 +508,7 @@ def pymongo_collection(collection='runs', **kwargs):
 
 def _collection(experiment, collection, **kwargs):
     if experiment not in ['xe1t', 'xent']:
-        raise ValueError("experiment must be '1t' or 'nt'")
+        raise ValueError(f"experiment must be 'xe1t' or 'xent'. You passed f{experiment}")
     uri = 'mongodb://{user}:{pw}@{url}'
     url = kwargs.get('url')
     user = kwargs.get('user')
@@ -516,7 +516,7 @@ def _collection(experiment, collection, **kwargs):
     database = kwargs.get('database')
 
     if not url:
-        url = uconfig.get('RunDB', 'pymongo_url')
+        url = uconfig.get('RunDB', f'{experiment}_url')
     if not user:
         user = uconfig.get('RunDB', f'{experiment}_user')
     if not pw:
@@ -533,8 +533,8 @@ def _collection(experiment, collection, **kwargs):
 
 
 def xent_collection(collection='runs', **kwargs):
-    return _collection('nt', collection, **kwargs)
+    return _collection('xent', collection, **kwargs)
 
 
 def xe1t_collection(collection='runs_new', **kwargs):
-    return _collection('1t', collection, **kwargs)
+    return _collection('xe1t', collection, **kwargs)
