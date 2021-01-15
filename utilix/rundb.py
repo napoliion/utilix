@@ -463,7 +463,7 @@ class DB():
 
     def delete_mc_document(self, document):
         '''
-        Adds a document to the MC database.
+        Deletes a document from the MC database. The document must be passed exactly.
         '''
         doc = json.dumps(document)
         url = '/mc/documents/'
