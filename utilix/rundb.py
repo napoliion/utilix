@@ -446,6 +446,29 @@ class DB():
         """Returns context name and strax(en) versions for a given dtype and hash"""
         raise NotImplementedError
 
+    def get_mc_documents(self):
+        '''
+        Returns all MC documents.
+        '''
+        url = '/mc/documents/'
+        return self._get(url)
+
+    def add_mc_document(self, document):
+        '''
+        Adds a document to the MC database.
+        '''
+        doc = json.dumps(document)
+        url = '/mc/documents/'
+        return self._post(url, data=doc)
+
+    def delete_mc_document(self, document):
+        '''
+        Deletes a document from the MC database. The document must be passed exactly.
+        '''
+        doc = json.dumps(document)
+        url = '/mc/documents/'
+        return self._delete(url, data=doc)
+
 
 class PyMongoCannotConnect(Exception):
     """Raise error when we cannot connect to the pymongo client"""
