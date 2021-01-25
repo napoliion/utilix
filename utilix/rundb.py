@@ -436,6 +436,39 @@ class DB():
 
         return rses
 
+    # TODO
+    def get_all_contexts(self):
+        """Loads all contexts"""
+        raise NotImplementedError
+
+    # TODO
+    def get_context_info(self, dtype, strax_hash):
+        """Returns context name and strax(en) versions for a given dtype and hash"""
+        raise NotImplementedError
+
+    def get_mc_documents(self):
+        '''
+        Returns all MC documents.
+        '''
+        url = '/mc/documents/'
+        return self._get(url)
+
+    def add_mc_document(self, document):
+        '''
+        Adds a document to the MC database.
+        '''
+        doc = json.dumps(document)
+        url = '/mc/documents/'
+        return self._post(url, data=doc)
+
+    def delete_mc_document(self, document):
+        '''
+        Deletes a document from the MC database. The document must be passed exactly.
+        '''
+        doc = json.dumps(document)
+        url = '/mc/documents/'
+        return self._delete(url, data=doc)
+
 
 class PyMongoCannotConnect(Exception):
     """Raise error when we cannot connect to the pymongo client"""
@@ -470,6 +503,7 @@ def test_collection(collection, url, raise_errors=False):
 def pymongo_collection(collection='runs', **kwargs):
     # default collection is the XENONnT runsDB
     # for 1T, pass collection='runs_new'
+    print("WARNING: pymongo_collection is deprecated. Please use nt_collection or 1t_collection instead")
     uri = 'mongodb://{user}:{pw}@{url}'
     url = kwargs.get('url')
     user = kwargs.get('user')
@@ -490,6 +524,40 @@ def pymongo_collection(collection='runs', **kwargs):
     coll = DB[collection]
     # Checkout the collection we are returning and raise errors if you want
     # to be realy sure we can use this URL.
-    test_collection(coll, url, raise_errors=False)
+    # test_collection(coll, url, raise_errors=False)
 
     return coll
+
+
+def _collection(experiment, collection, **kwargs):
+    if experiment not in ['xe1t', 'xent']:
+        raise ValueError(f"experiment must be 'xe1t' or 'xent'. You passed f{experiment}")
+    uri = 'mongodb://{user}:{pw}@{url}'
+    url = kwargs.get('url')
+    user = kwargs.get('user')
+    pw = kwargs.get('password')
+    database = kwargs.get('database')
+
+    if not url:
+        url = uconfig.get('RunDB', f'{experiment}_url')
+    if not user:
+        user = uconfig.get('RunDB', f'{experiment}_user')
+    if not pw:
+        pw = uconfig.get('RunDB', f'{experiment}_password')
+    if not database:
+        database = uconfig.get('RunDB', f'{experiment}_database')
+
+    uri = uri.format(user=user, pw=pw, url=url)
+    c = pymongo.MongoClient(uri, readPreference='secondaryPreferred')
+    DB = c[database]
+    coll = DB[collection]
+
+    return coll
+
+
+def xent_collection(collection='runs', **kwargs):
+    return _collection('xent', collection, **kwargs)
+
+
+def xe1t_collection(collection='runs_new', **kwargs):
+    return _collection('xe1t', collection, **kwargs)

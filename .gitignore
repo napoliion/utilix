@@ -3,3 +3,6 @@ utilix.egg-info
 .idea
 # pycache
 *.pyc
+
+dist/
+build/
