@@ -9,6 +9,7 @@ try:
     from utilix.rundb import DB
     db = DB()
 except FileNotFoundError as e:
+    uconfig = None
     warn(f'Utilix cannot find config file:\n {e}\nWithout it, you cannot '
          f'access the database. See https://github.com/XENONnT/utilix.')
 
