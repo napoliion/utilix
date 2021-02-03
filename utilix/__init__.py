@@ -1,4 +1,4 @@
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 # instantiate here so we just do it once
 from warnings import warn
 
