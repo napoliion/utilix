@@ -8,6 +8,8 @@ import pymongo
 from utilix import uconfig
 from warnings import warn
 
+from . import io
+
 # Config the logger:
 logger = logging.getLogger("utilix")
 ch = logging.StreamHandler()
@@ -22,99 +24,16 @@ BASE_HEADERS = {'Content-Type': "application/json", 'Cache-Control': "no-cache"}
 
 
 def Responder(func):
-    def LookUp():
-        return_dict = {
-            # taken from https://github.com/kennethreitz/requests/blob/master/requests/status_codes.py
-            # Informational.
-            100: ('continue',),
-            101: ('switching_protocols',),
-            102: ('processing',),
-            103: ('checkpoint',),
-            122: ('uri_too_long', 'request_uri_too_long'),
-            200: ('ok', 'okay', 'all_ok', 'all_okay', 'all_good', '\\o/', '✓'),
-            201: ('created',),
-            202: ('accepted',),
-            203: ('non_authoritative_info', 'non_authoritative_information'),
-            204: ('no_content',),
-            205: ('reset_content', 'reset'),
-            206: ('partial_content', 'partial'),
-            207: ('multi_status', 'multiple_status', 'multi_stati', 'multiple_stati'),
-            208: ('already_reported',),
-            226: ('im_used',),
-
-            # Redirection.
-            300: ('multiple_choices',),
-            301: ('moved_permanently', 'moved', '\\o-'),
-            302: ('found',),
-            303: ('see_other', 'other'),
-            304: ('not_modified',),
-            305: ('use_proxy',),
-            306: ('switch_proxy',),
-            307: ('temporary_redirect', 'temporary_moved', 'temporary'),
-            308: ('permanent_redirect',
-                  'resume_incomplete', 'resume',),  # These 2 to be removed in 3.0
-
-            # Client Error.
-            400: ('bad_request', 'bad'),
-            401: ('unauthorized',),
-            402: ('payment_required', 'payment'),
-            403: ('forbidden',),
-            404: ('not_found', '-o-'),
-            405: ('method_not_allowed', 'not_allowed'),
-            406: ('not_acceptable',),
-            407: ('proxy_authentication_required', 'proxy_auth', 'proxy_authentication'),
-            408: ('request_timeout', 'timeout'),
-            409: ('conflict',),
-            410: ('gone',),
-            411: ('length_required',),
-            412: ('precondition_failed', 'precondition'),
-            413: ('request_entity_too_large',),
-            414: ('request_uri_too_large',),
-            415: ('unsupported_media_type', 'unsupported_media', 'media_type'),
-            416: ('requested_range_not_satisfiable', 'requested_range', 'range_not_satisfiable'),
-            417: ('expectation_failed',),
-            418: ('im_a_teapot', 'teapot', 'i_am_a_teapot'),
-            421: ('misdirected_request',),
-            422: ('unprocessable_entity', 'unprocessable'),
-            423: ('locked',),
-            424: ('failed_dependency', 'dependency'),
-            425: ('unordered_collection', 'unordered'),
-            426: ('upgrade_required', 'upgrade'),
-            428: ('precondition_required', 'precondition'),
-            429: ('too_many_requests', 'too_many'),
-            431: ('header_fields_too_large', 'fields_too_large'),
-            444: ('no_response', 'none'),
-            449: ('retry_with', 'retry'),
-            450: ('blocked_by_windows_parental_controls', 'parental_controls'),
-            451: ('unavailable_for_legal_reasons', 'legal_reasons'),
-            499: ('client_closed_request',),
-
-            # Server Error.
-            500: ('internal_server_error', 'server_error', '/o\\', '✗'),
-            501: ('not_implemented',),
-            502: ('bad_gateway',),
-            503: ('service_unavailable', 'unavailable'),
-            504: ('gateway_timeout',),
-            505: ('http_version_not_supported', 'http_version'),
-            506: ('variant_also_negotiates',),
-            507: ('insufficient_storage',),
-            509: ('bandwidth_limit_exceeded', 'bandwidth'),
-            510: ('not_extended',),
-            511: ('network_authentication_required', 'network_auth', 'network_authentication'),
-        }
-        return return_dict
-
     def func_wrapper(*args, **kwargs):
         st = func(*args, **kwargs)
         if st.status_code != 200:
-            logger.error("API Call was {2}: HTTP(s) request says: {0} (Code {1})".format(
-                LookUp()[st.status_code][0],
+            logger.error("\n\tAPI Call was {0}\n\tReturn code: {1}\n\tReason: {2} ".format(
+                args[1],
                 st.status_code,
-                args[1]))
-            if st.status_code == 404:
-                logger.error(
-                    "Error 404 means the API call was not formatted correctly. Check the URL.")
-            elif st.status_code == 401:
+                st.text,
+            ))
+
+            if st.status_code == 401:
                 logger.error(
                     "Error 401 is an authentication error. This is likely an issue with your token. "
                     "Can you do 'rm ~/.dbtoken' and try again? ")
@@ -468,6 +387,28 @@ class DB():
         doc = json.dumps(document)
         url = '/mc/documents/'
         return self._delete(url, data=doc)
+
+    # TODO need to be careful about versioning!!!
+    def download_file(self, filename, save_dir='./', force=False):
+        """Downloads file from GridFS"""
+        url = f'/files/{filename}'
+        os.makedirs(save_dir, exist_ok=True)
+        write_to = os.path.join(save_dir, filename)
+        if os.path.exists(write_to) and not force:
+            logger.debug(f"{filename} already exists at {write_to} and the 'force' flag is not set.")
+        else:
+            logger.debug(f"Downloading {filename} from gridfs...")
+            response = self._get(url)
+            with open(write_to, 'wb') as f:
+                f.write(response.content)
+            logger.debug(f'DONE. {filename} downloaded to {write_to}')
+        return write_to
+
+    def load_file(self, filename, save_dir=None, force=False):
+        if save_dir is None:
+            save_dir = os.path.join(os.environ.get("HOME"), '.gridfs_cache')
+        path = self.download_file(filename, save_dir=save_dir, force=force)
+        return io.read_file(path)
 
 
 class PyMongoCannotConnect(Exception):
