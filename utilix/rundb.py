@@ -7,6 +7,9 @@ import logging
 import pymongo
 from utilix import uconfig
 from warnings import warn
+from threading import Timer
+import sys
+import multiprocessing
 
 from . import io
 
@@ -37,10 +40,6 @@ def Responder(func):
                 logger.error(
                     "Error 401 is an authentication error. This is likely an issue with your token. "
                     "Can you do 'rm ~/.dbtoken' and try again? ")
-            # add more helpful messages here...
-            # TODO reformat the LookUp function to include such messages
-            # raise an error if the call failed
-            raise RuntimeError("API call failed.")
         return st
 
     return func_wrapper
@@ -415,7 +414,16 @@ class DB():
             fb = f.read()
         filename = os.path.basename(filepath)
         url = f'/files/{filename}'
-        self._post(url, data=fb)
+        return self._post(url, data=fb)
+
+    def delete_file(self, filename):
+        resp = input(f"HUGE GIGANTIC CRITICAL WARNING: this will delete all files of the name {filename} in GridFS. "
+                     "Confirm by typing again the name of the file you want to delete: \n")
+        if resp != filename:
+            print("Probably the safe choice. Exiting.")
+            return
+        url = f'/files/{filename}'
+        return self._delete(url, data="")
 
 
 class PyMongoCannotConnect(Exception):
