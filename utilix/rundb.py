@@ -178,11 +178,11 @@ class DB():
 
     @Responder
     def _put(self, url, data):
-        return requests.put(PREFIX + url, data, headers=self.headers)
+        return requests.put(PREFIX + url, data=data, headers=self.headers)
 
     @Responder
     def _post(self, url, data):
-        return requests.post(PREFIX + url, data, headers=self.headers)
+        return requests.post(PREFIX + url, data=data, headers=self.headers)
 
     @Responder
     def _delete(self, url, data):
@@ -409,6 +409,13 @@ class DB():
             save_dir = os.path.join(os.environ.get("HOME"), '.gridfs_cache')
         path = self.download_file(filename, save_dir=save_dir, force=force)
         return io.read_file(path)
+
+    def upload_file(self, filepath):
+        with open(filepath, 'rb') as f:
+            fb = f.read()
+        filename = os.path.basename(filepath)
+        url = f'/files/{filename}'
+        self._post(url, data=fb)
 
 
 class PyMongoCannotConnect(Exception):
